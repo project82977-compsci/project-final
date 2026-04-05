@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartStudy - Mastery Center</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
+   <style>
+    @keyframes trophyBounce { 
+        0%, 100% { transform: translateY(0); } 
+        50% { transform: translateY(-10px); } 
+    }
+    .trophy-active { animation: trophyBounce 2s infinite ease-in-out; }
+
+    @keyframes levelPulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.2); color: #3b82f6; }
+        100% { transform: scale(1); }
+    }
+    .level-up-animate { animation: levelPulse 0.8s ease-out; }
+
+    .glass-card { 
+        background: rgba(255, 255, 255, 0.7); 
+        backdrop-filter: blur(12px); 
+        border: 1px solid rgba(203, 213, 225, 0.6); 
+        transition: background 0.5s ease, border 0.5s ease;
+    }
+    .dark .glass-card { 
+        background: rgba(30, 41, 59, 0.7); 
+        border: 1px solid rgba(51, 65, 85, 0.5); 
+    }
+
+    .locked-trophy { 
+        filter: grayscale(1); 
+        opacity: 0.3; 
+        transition: all 0.5s ease;
+    }
+
+    #loader {
+        position: fixed; inset: 0;
+        background: #ffffff;
+        display: flex; flex-direction: column;
+        justify-content: center; align-items: center;
+        z-index: 9999;
+    }
+    .dark #loader { background: #0b1120; }
+    #loader img { width: 120px; height: auto; }
+    #loader h2 { margin-top: 15px; font-size: 22px; color: #0f172a; }
+    .dark #loader h2 { color: #f1f5f9; }
+    #loader p { margin-top: 5px; font-size: 14px; color: #475569; }
+    .dark #loader p { color: #94a3b8; }
+    .hide-loader { opacity: 0; transition: opacity 0.6s ease; pointer-events: none; }
+
+    .stat-badge {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(147, 51, 234, 0.1));
+        border: 1px solid rgba(59, 130, 246, 0.2);
+    }
+
+    .error-banner {
+        position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+        background: #ef4444; color: white; padding: 16px 24px;
+        border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        z-index: 10000; max-width: 90%; animation: slideDown 0.3s ease-out;
+    }
+    @keyframes slideDown {
+        from { transform: translateX(-50%) translateY(-100%); opacity: 0; }
+        to   { transform: translateX(-50%) translateY(0);    opacity: 1; }
+    }
+</style>
+</head>
+
+<body class="bg-slate-50 dark:bg-[#0b1120] text-slate-900 dark:text-slate-200 min-h-screen p-4 md:p-8 transition-colors duration-500">
+    
+    <div id="loader">
+      <img src="online-class.gif" alt="Smart Study Loading" onerror="this.style.display='none'">
+      <h2>Smart Study with AI</h2>
+      <p id="loader-status">Loading your study space...</p>
+    </div>
+    
+    <audio id="level-up-sound" src="https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3" preload="auto"></audio>
+
+    <div class="max-w-6xl mx-auto">
+        <div class="flex justify-between items-center mb-10">
+            <button onclick="window.location.href='dash3.html'" class="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-blue-600 transition font-bold uppercase text-xs tracking-widest">
+                <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+            </button>
+            <div class="flex items-center gap-6">
+                <div class="flex items-center gap-2 bg-orange-500/10 px-4 py-2 rounded-full border border-orange-500/20">
+                    <i class="fa-solid fa-fire text-orange-500"></i>
+                    <span class="font-black text-orange-500" id="streak-count">0 DAY STREAK</span>
+                </div>
+                <button onclick="toggleDarkMode()" class="p-3 rounded-xl bg-white dark:bg-slate-800 text-yellow-500 shadow-sm border border-slate-200 dark:border-slate-700 hover:scale-110 transition">
+                    <i id="theme-icon" class="fa-solid fa-sun"></i>
+                </button>
+            </div>
+        </div>
+
+        <header class="mb-12 flex items-center gap-6">
+            <img id="user-photo" src="https://ui-avatars.com/api/?name=Student" class="w-20 h-20 rounded-3xl border-4 border-blue-500/20 shadow-xl">
+            <div>
+                <h1 class="text-5xl font-black text-slate-900 dark:text-white tracking-tighter mb-2">Mastery <span class="text-blue-600 dark:text-blue-500">Center</span></h1>
+                <p id="user-header-info" class="text-slate-500 dark:text-slate-400 font-medium">Loading Scholar Profile...</p>
+            </div>
+        </header>
+
+        <!-- Study Time Stats -->
+        <div class="glass-card rounded-[40px] p-10 mb-8">
+            <h2 class="text-sm font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.3em] mb-6">Study Time Overview</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div class="stat-badge rounded-2xl p-6 text-center">
+                    <div class="text-3xl font-black text-blue-600 dark:text-blue-400 mb-2" id="time-today">0 min</div>
+                    <div class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Today</div>
+                </div>
+                <div class="stat-badge rounded-2xl p-6 text-center">
+                    <div class="text-3xl font-black text-purple-600 dark:text-purple-400 mb-2" id="time-week">0 min</div>
+                    <div class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">This Week</div>
+                </div>
+                <div class="stat-badge rounded-2xl p-6 text-center">
+                    <div class="text-3xl font-black text-green-600 dark:text-green-400 mb-2" id="time-total">0 min</div>
+                    <div class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">All Time</div>
+                </div>
+                <div class="stat-badge rounded-2xl p-6 text-center">
+                    <div class="text-3xl font-black text-orange-600 dark:text-orange-400 mb-2" id="time-avg">0 min</div>
+                    <div class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Daily Avg</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Stats -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <div class="glass-card rounded-[40px] p-10">
+                <h2 class="text-sm font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.3em] mb-6 flex items-center gap-2">
+                    <i class="fa-solid fa-clock"></i> Pomodoro Statistics
+                </h2>
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-600 dark:text-slate-400 font-semibold">Total Sessions</span>
+                        <span class="text-2xl font-black text-slate-900 dark:text-white" id="pomodoro-sessions">0</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-600 dark:text-slate-400 font-semibold">Focus Time</span>
+                        <span class="text-2xl font-black text-blue-600 dark:text-blue-400" id="pomodoro-focus">0 min</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-600 dark:text-slate-400 font-semibold">Break Time</span>
+                        <span class="text-2xl font-black text-green-600 dark:text-green-400" id="pomodoro-break">0 min</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card rounded-[40px] p-10">
+                <h2 class="text-sm font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.3em] mb-6 flex items-center gap-2">
+                    <i class="fa-solid fa-graduation-cap"></i> Test Performance
+                </h2>
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-600 dark:text-slate-400 font-semibold">Tests Completed</span>
+                        <span class="text-2xl font-black text-slate-900 dark:text-white" id="test-count">0</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-600 dark:text-slate-400 font-semibold">Average Score</span>
+                        <span class="text-2xl font-black text-purple-600 dark:text-purple-400" id="test-avg">0%</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-600 dark:text-slate-400 font-semibold">Questions Answered</span>
+                        <span class="text-2xl font-black text-orange-600 dark:text-orange-400" id="test-questions">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-2 space-y-8">
+                <div class="glass-card rounded-[40px] p-10">
+                    <h2 class="text-sm font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.3em] mb-10">Achievement Trophies</h2>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-8" id="trophy-grid">
+                        <div class="flex flex-col items-center gap-4 group">
+                            <div class="w-20 h-20 bg-gradient-to-tr from-yellow-400 to-orange-500 rounded-3xl flex items-center justify-center text-3xl shadow-lg trophy-active"><i class="fa-solid fa-crown text-white"></i></div>
+                            <p class="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest">Perfect Score</p>
+                        </div>
+                        <div class="flex flex-col items-center gap-4">
+                            <div class="w-20 h-20 bg-gradient-to-tr from-blue-400 to-indigo-600 rounded-3xl flex items-center justify-center text-3xl shadow-lg"><i class="fa-solid fa-bolt text-white"></i></div>
+                            <p class="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest">Speed Demon</p>
+                        </div>
+                        <div class="flex flex-col items-center gap-4 locked-trophy">
+                            <div class="w-20 h-20 bg-slate-200 dark:bg-slate-800 rounded-3xl flex items-center justify-center text-3xl"><i class="fa-solid fa-diagram-project text-slate-400"></i></div>
+                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Graph Master</p>
+                        </div>
+                        <div class="flex flex-col items-center gap-4 locked-trophy">
+                            <div class="w-20 h-20 bg-slate-200 dark:bg-slate-800 rounded-3xl flex items-center justify-center text-3xl"><i class="fa-solid fa-calendar-check text-slate-400"></i></div>
+                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Consistency</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-[40px] p-10">
+                    <h2 class="text-sm font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.3em] mb-10">XP Matrix</h2>
+                    <div id="subject-progress" class="space-y-8">
+                        <p class="text-slate-500 text-center">No subjects tracked yet. Start studying!</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-8">
+                <div class="glass-card rounded-[40px] p-10 flex flex-col items-center">
+                    <div class="relative w-48 h-48 flex items-center justify-center">
+                        <svg class="w-full h-full transform -rotate-90">
+                            <circle cx="96" cy="96" r="85" stroke="currentColor" stroke-width="12" fill="transparent" class="text-slate-200 dark:text-slate-800" />
+                            <circle id="xp-circle" cx="96" cy="96" r="85" stroke="currentColor" stroke-width="12" fill="transparent" stroke-dasharray="534" stroke-dashoffset="534" class="text-blue-600 dark:text-blue-500 transition-all duration-1000" stroke-linecap="round" />
+                        </svg>
+                        <div class="absolute text-center">
+                            <span id="level-num" class="text-5xl font-black text-slate-900 dark:text-white block">1</span>
+                            <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Level</span>
+                        </div>
+                    </div>
+                    <div class="mt-10 w-full space-y-4">
+                        <div class="flex justify-between text-xs font-bold">
+                            <span class="text-slate-500">TOTAL XP</span>
+                            <span id="xp-display-text" class="text-blue-600 dark:text-blue-400">0 / 2,000</span>
+                        </div>
+                        <div class="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                            <div id="xp-bar" class="bg-blue-600 dark:bg-blue-500 h-full transition-all duration-1000" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-[40px] p-10">
+                    <h2 class="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-6 text-center">Learning Activity</h2>
+                    <div id="activity-chart" class="flex items-end gap-3 h-32 w-full px-2"></div>
+                    <div class="flex justify-between w-full mt-4 text-[9px] font-black text-slate-400 uppercase">
+                        <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+   <script type="module">
+    function showError(message, details = '') {
+        console.error('❌ Mastery Center Error:', message, details);
+        const banner = document.createElement('div');
+        banner.className = 'error-banner';
+        banner.innerHTML = `<div class="font-bold mb-1">${message}</div><div class="text-sm opacity-90">${details || 'Check console for details'}</div>`;
+        document.body.appendChild(banner);
+        setTimeout(() => banner.remove(), 5000);
+        const loaderStatus = document.getElementById('loader-status');
+        if (loaderStatus) { loaderStatus.textContent = 'Error loading. Please refresh.'; loaderStatus.style.color = '#ef4444'; }
+    }
+
+    function updateLoaderStatus(message) {
+        const el = document.getElementById('loader-status');
+        if (el) el.textContent = message;
+        console.log('🔄', message);
+    }
+
+    let db, auth;
+    try {
+        updateLoaderStatus('Loading Firebase modules...');
+        const firebaseModule = await import("./firebase.js").catch(() => {
+            throw new Error('Failed to load firebase.js');
+        });
+        db   = firebaseModule.db;
+        auth = firebaseModule.auth;
+        if (!db || !auth) throw new Error('Firebase not properly initialized');
+        updateLoaderStatus('Firebase loaded');
+    } catch (error) {
+        showError('Firebase Loading Error', error.message);
+        throw error;
+    }
+
+    const { doc, onSnapshot, getDoc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+    const { onAuthStateChanged }               = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+
+    const XP_PER_LEVEL = 2000;
+    let lastLevel = null;
+
+    // ─── HELPERS ──────────────────────────────────────────────────────────────
+    function formatTime(minutes) {
+        if (!minutes || minutes < 1) return '0 min';
+        if (minutes < 60) return `${minutes} min`;
+        const hours = Math.floor(minutes / 60);
+        const mins  = minutes % 60;
+        return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+    }
+
+    // ─── UPDATE TIME STATS ────────────────────────────────────────────────────
+    // Daily avg = totalMinutes / daysActive (daysActive is incremented by dashboard)
+    function updateTimeStats(data) {
+        const studyTime     = data.studyTime     || {};
+        const pomodoroStats = data.pomodoroStats || {};
+        const testStats     = data.testStats     || {};
+
+        const today       = new Date().toISOString().split('T')[0];
+        const lastUpdated = studyTime.lastUpdated || today;
+
+        // If lastUpdated is not today, todayMinutes hasn't been reset yet
+        // (dashboard resets on login — show 0 here rather than stale value)
+        const todayMins = lastUpdated === today ? (studyTime.todayMinutes || 0) : 0;
+        const weekMins  = studyTime.weekMinutes  || 0;
+        const totalMins = studyTime.totalMinutes || 0;
+        const daysActive = studyTime.daysActive  || 1;
+
+        // Correct daily average using actual daysActive
+        const avgDaily = Math.round(totalMins / daysActive);
+
+        document.getElementById('time-today').textContent = formatTime(todayMins);
+        document.getElementById('time-week').textContent  = formatTime(weekMins);
+        document.getElementById('time-total').textContent = formatTime(totalMins);
+        document.getElementById('time-avg').textContent   = formatTime(avgDaily);
+
+        // Pomodoro
+        document.getElementById('pomodoro-sessions').textContent = pomodoroStats.totalSessions || 0;
+        document.getElementById('pomodoro-focus').textContent    = formatTime(pomodoroStats.focusMinutes  || 0);
+        document.getElementById('pomodoro-break').textContent    = formatTime(pomodoroStats.breakMinutes  || 0);
+
+        // Tests
+        document.getElementById('test-count').textContent     = testStats.totalTests   || 0;
+        document.getElementById('test-avg').textContent       = (testStats.averageScore || 0) > 0 ? `${Math.round(testStats.averageScore)}%` : '0%';
+        document.getElementById('test-questions').textContent = testStats.totalQuestions || 0;
+    }
+
+    function checkAchievements(data) {
+        const trophies = document.querySelectorAll('#trophy-grid > div');
+        if (!trophies.length) return;
+        if (data.streak >= 7 && trophies[3]) {
+            trophies[3].classList.remove('locked-trophy');
+            trophies[3].querySelector('div').className = "w-20 h-20 bg-gradient-to-tr from-green-400 to-emerald-600 rounded-3xl flex items-center justify-center text-3xl shadow-lg";
+            trophies[3].querySelector('i').className   = "fa-solid fa-calendar-check text-white";
+        }
+        if (data.subjects && data.subjects['Graph'] >= 200 && trophies[2]) {
+            trophies[2].classList.remove('locked-trophy');
+            trophies[2].querySelector('div').className = "w-20 h-20 bg-gradient-to-tr from-purple-400 to-pink-600 rounded-3xl flex items-center justify-center text-3xl shadow-lg";
+            trophies[2].querySelector('i').className   = "fa-solid fa-diagram-project text-white";
+        }
+    }
+
+    function renderActivityChart(weeklyActivity) {
+        const chart = document.getElementById('activity-chart');
+        if (!chart) return;
+        const activity = weeklyActivity || [0,0,0,0,0,0,0];
+        const maxActivity = Math.max(...activity, 1);
+        const colors = ['bg-blue-500','bg-purple-500','bg-pink-500','bg-orange-500','bg-green-500','bg-indigo-500','bg-red-500'];
+        chart.innerHTML = activity.map((value, i) => `
+            <div class="flex-1 ${colors[i]} rounded-t-lg transition-all hover:opacity-80" style="height: ${(value/maxActivity)*100}%"></div>
+        `).join('');
+    }
+
+    // ─── MAIN SYNC (READ-ONLY for streak) ────────────────────────────────────
+    function startMasterySync(uid) {
+        updateLoaderStatus('Syncing mastery data...');
+        onSnapshot(doc(db, "users", uid), (docSnap) => {
+            if (!docSnap.exists()) return;
+            const data = docSnap.data();
+
+            // XP & Level
+            const totalXP      = data.totalXP || 0;
+            const currentLevel = Math.floor(totalXP / XP_PER_LEVEL) + 1;
+            const xpIntoLevel  = totalXP % XP_PER_LEVEL;
+            const xpPct        = (xpIntoLevel / XP_PER_LEVEL) * 100;
+
+            // Level-up sound
+            if (lastLevel !== null && currentLevel > lastLevel) {
+                const sound = document.getElementById('level-up-sound');
+                if (sound) { sound.currentTime = 0; sound.play().catch(()=>{}); }
+                const levelEl = document.getElementById("level-num");
+                if (levelEl) {
+                    levelEl.classList.add('level-up-animate');
+                    setTimeout(() => levelEl.classList.remove('level-up-animate'), 800);
+                }
+            }
+            lastLevel = currentLevel;
+
+            // ── STREAK: just read it, dashboard owns it ──────────────────────
+            document.getElementById("streak-count").innerText = `${data.streak || 0} DAY STREAK`;
+
+            // XP display
+            document.getElementById("level-num").innerText       = currentLevel;
+            document.getElementById("xp-display-text").innerText = `${totalXP.toLocaleString()} / ${(currentLevel * XP_PER_LEVEL).toLocaleString()}`;
+            const circle = document.getElementById('xp-circle');
+            if (circle) circle.style.strokeDashoffset = 534 - (534 * xpPct) / 100;
+            const bar = document.getElementById('xp-bar');
+            if (bar) bar.style.width = xpPct + "%";
+
+            // Subject XP matrix
+            const matrix = document.getElementById('subject-progress');
+            if (matrix) {
+                if (data.subjects && Object.keys(data.subjects).length > 0) {
+                    matrix.innerHTML = "";
+                    Object.entries(data.subjects).forEach(([name, xp]) => {
+                        const pct = Math.min((xp / 500) * 100, 100);
+                        matrix.innerHTML += `
+                            <div>
+                                <div class="flex justify-between items-end mb-3">
+                                    <h3 class="font-bold text-slate-800 dark:text-white text-sm tracking-tight">${name}</h3>
+                                    <span class="text-[10px] font-black text-slate-400">${xp} XP</span>
+                                </div>
+                                <div class="w-full bg-slate-200 dark:bg-slate-800/50 h-2 rounded-full overflow-hidden">
+                                    <div class="bg-blue-600 dark:bg-blue-500 h-full transition-all duration-1000" style="width: ${pct}%"></div>
+                                </div>
+                            </div>`;
+                    });
+                } else {
+                    matrix.innerHTML = '<p class="text-slate-500 text-center">No subjects tracked yet. Start studying!</p>';
+                }
+            }
+
+            // Time stats (with stale-day guard)
+            updateTimeStats(data);
+            checkAchievements(data);
+            renderActivityChart(data.weeklyActivity);
+
+        }, (error) => showError('Failed to sync data', error.message));
+    }
+
+    // ─── AUTH ─────────────────────────────────────────────────────────────────
+    // Progress page does NOT update streak or reset times.
+    // It only reads data. All resets happen in dashboard on login.
+    updateLoaderStatus('Checking authentication...');
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            updateLoaderStatus('Authenticated: ' + (user.displayName || 'Student'));
+            try {
+                const photoEl = document.getElementById("user-photo");
+                if (photoEl) photoEl.src = user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'Student')}`;
+                document.getElementById("user-header-info").innerText = `Scholar • ${user.displayName || 'Student'}`;
+
+                startMasterySync(user.uid);
+
+                setTimeout(() => {
+                    const loader = document.getElementById('loader');
+                    if (loader) loader.classList.add('hide-loader');
+                    console.log('✨ Mastery Center loaded!');
+                }, 800);
+            } catch (error) {
+                showError('Failed to load user data', error.message);
+            }
+        } else {
+            updateLoaderStatus('No user — redirecting...');
+            setTimeout(() => { window.location.href = "signin.html"; }, 1000);
+        }
+    }, (error) => showError('Authentication Error', error.message));
+
+    // ─── THEME ────────────────────────────────────────────────────────────────
+    window.toggleDarkMode = () => {
+        const isDark = document.documentElement.classList.toggle('dark');
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        const icon = document.getElementById('theme-icon');
+        if (icon) icon.className = isDark ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+        const savedTheme = localStorage.getItem('theme');
+        const isDark = savedTheme !== 'light';
+        document.documentElement.classList.toggle('dark', isDark);
+        const icon = document.getElementById('theme-icon');
+        if (icon) icon.className = isDark ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+    });
+</script>
+</body>
+</html>

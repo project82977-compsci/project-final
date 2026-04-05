@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en" id="htmlRoot" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartStudy AI | Workspace</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap');
+    
+    :root { 
+      --bg-main: #0b0f1a; --bg-side: #0f172a; --card-bg: rgba(30, 41, 59, 0.6); 
+      --text-main: #ffffff; --text-muted: #94a3b8;
+    }
+
+    .light-mode {
+      --bg-main: #f1f5f9; --bg-side: #ffffff; --card-bg: rgba(255, 255, 255, 0.8);
+      --text-main: #1e293b; --text-muted: #64748b;
+    }
+
+    body { 
+      font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg-main); 
+      color: var(--text-main); height: 100vh; overflow: hidden; transition: 0.3s;
+    }
+
+    aside { background-color: var(--bg-side); transition: 0.3s; }
+    .glass-card { background: var(--card-bg); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 1.2rem; }
+    .task-column { min-height: 60vh; background: rgba(0,0,0,0.05); border-radius: 1.5rem; padding: 1.2rem; }
+    
+    .timer-active { animation: pulse-purple 2s infinite; }
+    @keyframes pulse-purple { 
+      0% { box-shadow: 0 0 0 0 rgba(147, 51, 234, 0.4); } 
+      70% { box-shadow: 0 0 0 10px rgba(147, 51, 234, 0); } 
+      100% { box-shadow: 0 0 0 0 rgba(147, 51, 234, 0); } 
+    }
+
+    /* Category Tag Colors */
+    .tag-study { background: rgba(147, 51, 234, 0.2); color: #c084fc; }
+    .tag-research { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+    .tag-exam { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+
+    .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #334155; transition: .4s; border-radius: 20px; }
+    .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+    input:checked + .slider { background-color: #9333ea; }
+    input:checked + .slider:before { transform: translateX(20px); }
+  </style>
+</head>
+<body class="flex">
+
+  <aside class="w-80 h-screen border-r border-black/5 flex flex-col shrink-0">
+    <div class="p-6 flex flex-col h-full">
+      <div class="flex items-center justify-between mb-8">
+        <div class="flex items-center gap-4">
+          <div class="bg-gradient-to-br from-purple-500 to-pink-500 p-2 rounded-xl"><i class="fas fa-brain text-white"></i></div>
+          <span class="font-extrabold text-2xl tracking-tight">SmartStudy</span>
+        </div>
+        <button onclick="toggleTheme()" class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-purple-500/10 transition-all">
+          <i id="themeIcon" class="fas fa-moon text-purple-500"></i>
+        </button>
+      </div>
+
+      <div class="glass-card p-4 mb-6 flex justify-between items-center border-white/5">
+        <span class="text-[10px] font-black uppercase text-gray-500 tracking-widest">Master Audio</span>
+        <label class="switch"><input type="checkbox" id="masterAudioToggle" checked onchange="toggleMasterMute()"><span class="slider"></span></label>
+      </div>
+
+      <nav class="mb-8 space-y-2">
+        <a href="dash3.html" class="flex items-center gap-4 p-4 rounded-xl hover:bg-white/5 text-gray-400 transition-all"><i class="fas fa-th-large"></i> <span class="font-bold">Dashboard</span></a>
+        <div class="flex items-center gap-4 p-4 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20"><i class="fas fa-tasks"></i> <span class="font-bold">Tasks & Timer</span></div>
+      </nav>
+
+      <div id="globalTimer" class="glass-card p-5 border-white/5 mb-4">
+        <h3 id="timerDisplay" class="text-4xl font-black mb-4 text-center">25:00</h3>
+        <button onclick="toggleTimer()" id="timerBtn" class="bg-purple-600 hover:bg-purple-700 w-full py-2 rounded-xl text-xs font-bold transition-all">Start Focus</button>
+      </div>
+
+      <div class="glass-card p-5 border-white/5 flex justify-around items-center">
+          <button onclick="toggleSound('lofi')" id="btn-lofi" class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center transition-all"><i class="fas fa-headphones text-xs text-gray-400"></i></button>
+          <button onclick="toggleSound('rain')" id="btn-rain" class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center transition-all"><i class="fas fa-cloud-showers-heavy text-xs text-gray-400"></i></button>
+          <button onclick="toggleSound('noise')" id="btn-noise" class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center transition-all"><i class="fas fa-wind text-xs text-gray-400"></i></button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="flex-1 h-screen overflow-y-auto p-12 space-y-10">
+    <header class="flex justify-between items-end">
+      <div>
+        <h1 class="text-4xl font-black">Workspace</h1>
+        <p id="activeTaskLabel" class="text-gray-500 mt-2">Manage your study sessions.</p>
+      </div>
+      <button onclick="openTaskModal()" class="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-purple-500/20">+ Add New Task</button>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div><h3 class="font-bold uppercase text-[10px] text-gray-500 mb-4 px-2">To Do</h3><div id="todo-list" class="task-column space-y-4"></div></div>
+      <div><h3 class="font-bold uppercase text-[10px] text-orange-500 mb-4 px-2">Doing</h3><div id="doing-list" class="task-column space-y-4"></div></div>
+      <div><h3 class="font-bold uppercase text-[10px] text-green-500 mb-4 px-2">Done</h3><div id="done-list" class="task-column space-y-4"></div></div>
+    </div>
+  </main>
+
+  <div id="taskModal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden items-center justify-center z-50">
+    <div class="glass-card p-8 w-[400px]">
+      <h2 class="text-2xl font-black mb-6">Create Task</h2>
+      <input type="text" id="taskTitleInput" placeholder="Task title..." class="w-full bg-white/5 border border-white/10 p-4 rounded-xl mb-4 text-white focus:outline-none">
+      <select id="taskCategoryInput" class="w-full bg-[#0f172a] border border-white/10 p-4 rounded-xl mb-6 text-white focus:outline-none">
+          <option value="study">📚 Study</option>
+          <option value="research">🔍 Research</option>
+          <option value="exam">🎯 Exam Prep</option>
+      </select>
+      <div class="flex gap-4">
+        <button onclick="closeTaskModal()" class="flex-1 text-gray-400 font-bold">Cancel</button>
+        <button onclick="addTaskFromModal()" class="flex-1 bg-purple-600 py-3 rounded-xl font-bold">Add Task</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let tasks = JSON.parse(localStorage.getItem('smart_tasks')) || [];
+    let timeLeft = 1500;
+    let timerId = null;
+    let activeSound = null;
+    let isMuted = false;
+
+  // STABLE AUDIO SOURCES (Direct Links from SoundHelix)
+    const sounds = {
+        // 1) SoundHelix Song 1 (Upbeat/Electronic)
+        lofi: new Audio('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'), 
+        
+        // 2) SoundHelix Song 8 (Mellow/Chill - Your current working link)
+        rain: new Audio('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3'),
+        
+        // 3) SoundHelix Song 2 (Deep/Rhythmic)
+        noise: new Audio('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3')
+    };
+
+    // Auto-loop and volume settings
+    Object.values(sounds).forEach(s => { 
+        s.loop = true; 
+        s.volume = 0.5; 
+        s.muted = typeof isMuted !== 'undefined' ? isMuted : false; 
+    });
+
+    function openTaskModal() { document.getElementById('taskModal').classList.replace('hidden', 'flex'); }
+    function closeTaskModal() { document.getElementById('taskModal').classList.replace('flex', 'hidden'); }
+    
+    function addTaskFromModal() {
+        const title = document.getElementById('taskTitleInput').value;
+        const category = document.getElementById('taskCategoryInput').value;
+        if (!title) return;
+        tasks.push({ id: Date.now(), title, category, status: 'todo' });
+        document.getElementById('taskTitleInput').value = '';
+        save();
+        closeTaskModal();
+    }
+
+    function initTheme() {
+        const savedTheme = localStorage.getItem('smart_theme') || 'dark';
+        if (savedTheme === 'light') toggleTheme(true);
+    }
+
+    function toggleTheme(forceLight = false) {
+        const root = document.getElementById('htmlRoot');
+        const icon = document.getElementById('themeIcon');
+        const isLight = forceLight || root.classList.toggle('light-mode');
+        root.classList.toggle('dark', !isLight);
+        localStorage.setItem('smart_theme', isLight ? 'light' : 'dark');
+        icon.classList.replace(isLight ? 'fa-moon' : 'fa-sun', isLight ? 'fa-sun' : 'fa-moon');
+    }
+
+    function toggleMasterMute() {
+        isMuted = !document.getElementById('masterAudioToggle').checked;
+        Object.values(sounds).forEach(s => s.muted = isMuted);
+    }
+
+    function toggleSound(type) {
+        const btn = document.getElementById(`btn-${type}`);
+        if (activeSound === type) {
+            sounds[type].pause(); activeSound = null;
+            btn.classList.remove('bg-purple-600');
+        } else {
+            if (activeSound) {
+                sounds[activeSound].pause();
+                document.getElementById(`btn-${activeSound}`).classList.remove('bg-purple-600');
+            }
+            sounds[type].play().catch(() => {}); activeSound = type;
+            btn.classList.add('bg-purple-600');
+        }
+    }
+
+    function updateTimerDisplay() {
+        const mins = Math.floor(timeLeft / 60); const secs = timeLeft % 60;
+        document.getElementById('timerDisplay').innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    }
+
+    function toggleTimer() {
+        if (timerId) {
+            clearInterval(timerId); timerId = null;
+            document.getElementById('timerBtn').innerText = "Resume Session";
+            document.getElementById('globalTimer').classList.remove('timer-active');
+        } else {
+            document.getElementById('globalTimer').classList.add('timer-active');
+            document.getElementById('timerBtn').innerText = "Pause Session";
+            timerId = setInterval(() => { timeLeft--; updateTimerDisplay(); if (timeLeft <= 0) alert("Focus Done!"); }, 1000);
+        }
+    }
+
+    function renderTasks() {
+        const cols = { todo: document.getElementById('todo-list'), doing: document.getElementById('doing-list'), done: document.getElementById('done-list') };
+        Object.values(cols).forEach(c => c.innerHTML = '');
+        tasks.forEach(t => {
+            const card = document.createElement('div');
+            card.className = "glass-card p-5 border-l-4 border-purple-500";
+            card.innerHTML = `
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-[8px] font-bold uppercase px-2 py-1 rounded-md tag-${t.category}">${t.category}</span>
+                    <button onclick="deleteTask(${t.id})" class="text-gray-600 hover:text-red-500"><i class="fas fa-trash text-[10px]"></i></button>
+                </div>
+                <p class="font-bold text-sm mb-4">${t.title}</p>
+                <div class="flex gap-4 text-[9px] text-gray-500 font-black">
+                    <button onclick="moveTask(${t.id}, 'doing')" class="hover:text-white">START</button>
+                    <button onclick="moveTask(${t.id}, 'done')" class="hover:text-white">FINISH</button>
+                </div>`;
+            cols[t.status].appendChild(card);
+        });
+    }
+
+    function moveTask(id, status) { tasks = tasks.map(t => t.id === id ? {...t, status} : t); save(); }
+    function deleteTask(id) { tasks = tasks.filter(t => t.id !== id); save(); }
+    function save() { localStorage.setItem('smart_tasks', JSON.stringify(tasks)); renderTasks(); }
+
+    window.onload = () => { initTheme(); renderTasks(); };
+  </script>
+</body>
+</html>

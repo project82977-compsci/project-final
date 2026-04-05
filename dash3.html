@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en" id="htmlRoot" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartStudy AI | Premium Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs/dayjs.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap');
+    :root { --bg-main: #0b0f1a; --bg-side: #0f172a; --card-bg: rgba(30, 41, 59, 0.6); --text-main: #ffffff; }
+    .light-mode { --bg-main: #f8fafc; --bg-side: #ffffff; --card-bg: rgba(255, 255, 255, 0.8); --text-main: #0f172a; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg-main); color: var(--text-main); height: 100vh; overflow: hidden; transition: 0.3s; }
+    .glass-card { background: var(--card-bg); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 1.5rem; }
+    #sidebar { transition: width 0.4s; background-color: var(--bg-side); }
+    .sidebar-collapsed { width: 85px !important; }
+    .sidebar-collapsed .nav-text, .sidebar-collapsed .profile-detail { display: none; }
+    .dashboard-scroll::-webkit-scrollbar { width: 6px; }
+    .dashboard-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+    
+    #loader {
+      position: fixed;
+      inset: 0;
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+    #loader img { width: 120px; height: auto; }
+    #loader h2 { margin-top: 15px; font-size: 22px; color: #0f172a; }
+    #loader p { margin-top: 5px; font-size: 14px; color: #475569; }
+    .hide-loader { opacity: 0; transition: opacity 0.6s ease; pointer-events: none; }
+  </style>
+</head>
+<body class="flex">
+  <div id="loader">
+    <img src="online-class.gif" alt="Smart Study Loading" onerror="this.style.display='none'">
+    <h2>Smart Study with AI</h2>
+    <p>Loading your study space...</p>
+  </div>
+
+  <aside id="sidebar" class="w-80 h-screen border-r border-black/5 flex flex-col shrink-0 relative">
+    <button onclick="toggleSidebar()" class="absolute -right-3 top-12 bg-purple-600 w-7 h-7 rounded-full flex items-center justify-center border-4 border-[#0b0f1a] z-50">
+      <i class="fas fa-chevron-left text-[10px] text-white" id="collapseIcon"></i>
+    </button>
+    <div class="p-8 flex flex-col h-full">
+      <div class="flex items-center gap-4 mb-12">
+        <div class="bg-gradient-to-br from-purple-500 to-pink-500 p-2 rounded-xl"><i class="fas fa-brain text-white"></i></div>
+        <span class="font-extrabold text-2xl nav-text">SmartStudy</span>
+      </div>
+      <div class="flex flex-col items-center profile-detail mb-10">
+        <label for="profileUpload" class="relative group cursor-pointer mb-4">
+          <img id="profilePic" src="https://ui-avatars.com/api/?name=User" class="rounded-full w-28 h-28 border-4 border-purple-500/20 object-cover">
+          <input type="file" id="profileUpload" class="hidden" accept="image/*">
+        </label>
+        <h2 id="userName" class="text-xl font-extrabold">Student</h2>
+      </div>
+      
+      <nav class="space-y-4">
+        <div onclick="window.location.href='anotherflip.html'" class="flex items-center gap-5 p-4 rounded-xl hover:bg-black/5 cursor-pointer">
+          <i class="fas fa-book text-blue-500"></i> 
+          <span class="nav-text font-bold">Study Cards</span>
+        </div>
+        <div onclick="window.location.href='newpomo.html'" class="flex items-center gap-5 p-4 rounded-xl hover:bg-black/5 cursor-pointer">
+          <i class="fas fa-clock text-purple-500"></i> 
+          <span class="nav-text font-bold">Pomodoro Timer</span>
+        </div>
+        <div onclick="window.location.href='progress2.html'" class="flex items-center gap-5 p-4 rounded-xl hover:bg-black/5 cursor-pointer">
+          <i class="fas fa-trophy text-yellow-500"></i> 
+          <span class="nav-text font-bold">Mastery Center</span>
+        </div>
+        <div onclick="window.location.href='vault.html'" class="flex items-center gap-5 p-4 rounded-xl hover:bg-black/5 cursor-pointer">
+          <i class="fas fa-vault text-green-500"></i> 
+          <span class="nav-text font-bold">Storage Vault</span>
+        </div>
+        <div onclick="toggleTheme()" class="flex items-center gap-5 p-4 rounded-xl hover:bg-black/5 cursor-pointer">
+          <i class="fas fa-sun text-orange-500" id="themeIcon"></i> 
+          <span class="nav-text font-bold">Toggle Theme</span>
+        </div>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="flex-1 h-screen overflow-y-auto p-12 space-y-10 dashboard-scroll">
+    <header class="flex justify-between items-center">
+      <h1 class="text-4xl font-black">Dashboard</h1>
+      <div class="w-80 glass-card p-5 cursor-pointer" onclick="editGoal()">
+        <div class="flex justify-between text-[10px] font-black mb-2 uppercase text-gray-500">
+          <span>Weekly Goal</span> <span class="text-pink-500" id="goalText">72%</span>
+        </div>
+        <div class="h-2 bg-gray-200/20 rounded-full overflow-hidden">
+          <div id="goalBar" class="h-full bg-gradient-to-r from-purple-600 to-pink-500" style="width: 72%"></div>
+        </div>
+      </div>
+    </header>
+
+    <section class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div class="glass-card p-8 h-40 flex items-center gap-6">
+        <div class="w-16 h-16 bg-orange-500/10 text-orange-500 rounded-2xl flex items-center justify-center text-3xl"><i class="fas fa-fire"></i></div>
+        <div><p class="text-xs text-gray-500 font-bold uppercase">Streak</p><h4 class="text-4xl font-black" id="streakDisplay">0 Days</h4></div>
+      </div>
+      <div class="glass-card p-8 h-40 flex items-center gap-6">
+        <div class="w-16 h-16 bg-blue-500/10 text-blue-500 rounded-2xl flex items-center justify-center text-3xl"><i class="fas fa-clock"></i></div>
+        <div><p class="text-xs text-gray-500 font-bold uppercase">Study Today</p><h4 class="text-4xl font-black" id="studyTimeToday">0 min</h4></div>
+      </div>
+      <div class="glass-card p-8 h-40 flex items-center gap-6">
+        <div class="w-16 h-16 bg-purple-500/10 text-purple-500 rounded-2xl flex items-center justify-center text-3xl"><i class="fas fa-star"></i></div>
+        <div><p class="text-xs text-gray-500 font-bold uppercase">Total XP</p><h4 class="text-4xl font-black" id="totalXPDisplay">0</h4></div>
+      </div>
+      <div class="glass-card p-8 h-40 flex items-center gap-6">
+        <div class="w-16 h-16 bg-green-500/10 text-green-500 rounded-2xl flex items-center justify-center text-3xl"><i class="fas fa-graduation-cap"></i></div>
+        <div><p class="text-xs text-gray-500 font-bold uppercase">Level</p><h4 class="text-4xl font-black" id="levelDisplay">1</h4></div>
+      </div>
+    </section>
+
+    <section class="grid grid-cols-1 lg:grid-cols-1 gap-8">
+      <div class="glass-card p-8 h-[400px]">
+        <h3 class="text-xs font-bold text-gray-500 uppercase mb-6">Performance Matrix</h3>
+        <div class="relative h-72 w-full">
+          <canvas id="mainChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-8 pb-10">
+      <div class="glass-card p-10">
+        <div class="flex justify-between items-center mb-8">
+          <h3 class="font-black text-xl">Calendar</h3>
+          <div class="flex items-center gap-3">
+            <button onclick="changeMonth(-1)"><i class="fas fa-chevron-left text-xs"></i></button>
+            <span id="calendarMonth" class="text-xs font-black text-purple-500 bg-purple-500/10 px-4 py-2 rounded-xl"></span>
+            <button onclick="changeMonth(1)"><i class="fas fa-chevron-right text-xs"></i></button>
+          </div>
+        </div>
+        <div class="grid grid-cols-7 gap-3 text-center text-[10px] font-black text-gray-500 uppercase mb-4">
+          <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+        </div>
+        <div id="calendarDays" class="grid grid-cols-7 gap-3"></div>
+      </div>
+
+      <div class="glass-card p-10">
+        <h3 class="font-black text-xl mb-8">Notes & Reminders</h3>
+        <div id="upcomingList" class="space-y-4"></div>
+      </div>
+    </section>
+    
+    <section class="glass-card p-8 mb-8">
+      <h3 class="text-xs font-bold text-gray-500 uppercase mb-6">Log Study Session</h3>
+      <div class="flex flex-wrap gap-4">
+        <input type="text" id="newSubjectName" placeholder="Subject Name (e.g. Python)" 
+          class="bg-black/10 border border-white/10 rounded-xl px-4 py-2 flex-1 outline-none focus:border-purple-500 transition">
+        <input type="number" id="xpAmount" placeholder="XP Gained" 
+          class="bg-black/10 border border-white/10 rounded-xl px-4 py-2 w-32 outline-none focus:border-purple-500 transition">
+        <button onclick="logStudySession()" 
+          class="bg-gradient-to-r from-purple-600 to-pink-500 px-6 py-2 rounded-xl font-bold hover:scale-105 transition-all">
+          Add XP
+        </button>
+      </div>
+    </section>
+  </main>
+
+<script type="module">
+  import { db, auth } from "./firebase.js";
+  import { 
+    doc, onSnapshot, updateDoc, increment, setDoc, getDoc, serverTimestamp 
+  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+  import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+  window.isDark = true;
+  window.chartInstance = null;
+  window.viewDate = dayjs();
+  window.currentLabels = ["No Data"];
+  window.currentData = [0];
+  const _storedRem = localStorage.getItem("study_reminders");
+  window.reminders = _storedRem ? JSON.parse(_storedRem) : {};
+  window.userDocId = null;
+  let unsubscribeFirebase = null;
+
+  // ─── HELPERS ────────────────────────────────────────────────────────────────
+  function formatTime(minutes) {
+    if (!minutes || minutes < 1) return '0 min';
+    if (minutes < 60) return `${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  }
+
+  function getMondayOfWeek() {
+    // Returns the YYYY-MM-DD string for the most recent Monday
+    const now = dayjs();
+    const day = now.day(); // 0=Sun, 1=Mon ... 6=Sat
+    const diff = day === 0 ? 6 : day - 1; // days since Monday
+    return now.subtract(diff, 'day').format('YYYY-MM-DD');
+  }
+
+  // ─── DAILY & WEEKLY RESET (THE CORE FIX) ────────────────────────────────────
+  // Called once on login. Handles:
+  //   1. Streak: only incremented here, progress page just reads it
+  //   2. todayMinutes: reset to 0 if lastUpdated !== today
+  //   3. weekMinutes: reset to 0 if lastMonday !== current Monday
+  //   4. daysActive: incremented each new day so daily avg stays correct
+  async function runDailyReset(userRef, data) {
+    const today = dayjs().format('YYYY-MM-DD');
+    const currentMonday = getMondayOfWeek();
+    const studyTime = data.studyTime || {};
+    const lastUpdated = studyTime.lastUpdated || today;
+    const lastMonday  = studyTime.lastMonday  || currentMonday;
+
+    const updates = {};
+    let needsUpdate = false;
+
+    // ── 1. STREAK ──────────────────────────────────────────────────────────────
+    // Only the dashboard manages streak. Progress page will just read it.
+    const lastLoginDate = data.lastLoginDate || today;
+    if (lastLoginDate !== today) {
+      const diff = dayjs(today).diff(dayjs(lastLoginDate), 'day');
+      // diff===1 means they logged in yesterday → continue streak
+      // diff>1  means they missed a day → reset to 1
+      const newStreak = diff === 1 ? (data.streak || 0) + 1 : 1;
+      updates.streak        = newStreak;
+      updates.lastLoginDate = today;
+      needsUpdate = true;
+    }
+
+    // ── 2. TODAY MINUTES RESET ─────────────────────────────────────────────────
+    if (lastUpdated !== today) {
+      updates['studyTime.todayMinutes'] = 0;
+      updates['studyTime.lastUpdated']  = today;
+      // Increment daysActive so daily average denominator is correct
+      updates['studyTime.daysActive']   = (studyTime.daysActive || 1) + 1;
+      needsUpdate = true;
+    }
+
+    // ── 3. WEEK MINUTES RESET (every Monday) ──────────────────────────────────
+    if (lastMonday !== currentMonday) {
+      updates['studyTime.weekMinutes'] = 0;
+      updates['studyTime.lastMonday']  = currentMonday;
+      needsUpdate = true;
+    }
+
+    if (needsUpdate) {
+      await updateDoc(userRef, updates);
+      console.log('✅ Daily/weekly reset applied:', updates);
+    }
+  }
+
+  // ─── SIDEBAR ─────────────────────────────────────────────────────────────────
+  window.toggleSidebar = () => {
+    const sidebar = document.getElementById('sidebar');
+    const icon = document.getElementById('collapseIcon');
+    sidebar.classList.toggle('sidebar-collapsed');
+    icon.className = sidebar.classList.contains('sidebar-collapsed')
+      ? 'fas fa-chevron-right text-[10px] text-white'
+      : 'fas fa-chevron-left text-[10px] text-white';
+  };
+
+  // ─── THEME ───────────────────────────────────────────────────────────────────
+  window.toggleTheme = () => {
+    window.isDark = !window.isDark;
+    document.getElementById('htmlRoot').classList.toggle('light-mode');
+    const icon = document.getElementById('themeIcon');
+    icon.className = window.isDark ? 'fas fa-sun text-orange-500' : 'fas fa-moon text-purple-500';
+    localStorage.setItem('theme', window.isDark ? 'dark' : 'light');
+    window.updateCharts(window.currentLabels, window.currentData);
+  };
+
+  // ─── GOAL ────────────────────────────────────────────────────────────────────
+  window.editGoal = () => {
+    const val = prompt("Enter new goal %:", 72);
+    if (val && !isNaN(val) && val >= 0 && val <= 100) {
+      document.getElementById('goalText').innerText = val + "%";
+      document.getElementById('goalBar').style.width = val + "%";
+      localStorage.setItem("user_goal", val);
+      if (window.userDocId) {
+        updateDoc(doc(db, "users", window.userDocId), { weekly_goal: parseInt(val) });
+      }
+    }
+  };
+
+  // ─── CALENDAR ────────────────────────────────────────────────────────────────
+  window.changeMonth = (step) => {
+    window.viewDate = window.viewDate.add(step, 'month');
+    renderCalendar();
+  };
+
+  window.addNote = (date) => {
+    const note = prompt("Note for " + date, window.reminders[date] || "");
+    if (note !== null) {
+      if (note.trim() === "") delete window.reminders[date];
+      else window.reminders[date] = note.trim();
+      localStorage.setItem("study_reminders", JSON.stringify(window.reminders));
+      renderCalendar();
+      renderUpcoming();
+    }
+  };
+
+  window.deleteNote = (date) => {
+    delete window.reminders[date];
+    localStorage.setItem("study_reminders", JSON.stringify(window.reminders));
+    renderCalendar();
+    renderUpcoming();
+  };
+
+  // ─── STUDY SESSION LOGGER ────────────────────────────────────────────────────
+  window.logStudySession = async () => {
+    if (!window.userDocId) { alert("User not authenticated. Please log in."); return; }
+    const subject = document.getElementById('newSubjectName').value.trim();
+    const xp = parseInt(document.getElementById('xpAmount').value);
+    if (!subject || isNaN(xp) || xp < 0) {
+      alert("Please enter a valid subject name and positive XP amount.");
+      return;
+    }
+    try {
+      await updateDoc(doc(db, "users", window.userDocId), {
+        [`subjects.${subject}`]: increment(xp),
+        totalXP: increment(xp)
+      });
+      document.getElementById('newSubjectName').value = "";
+      document.getElementById('xpAmount').value = "";
+      console.log(`✅ Added ${xp} XP to ${subject}`);
+    } catch (error) {
+      console.error("Error updating study session:", error);
+      alert("Failed to update. Check console for details.");
+    }
+  };
+
+  // ─── CHART ───────────────────────────────────────────────────────────────────
+  window.updateCharts = (labels = window.currentLabels, xpValues = window.currentData) => {
+    window.currentLabels = labels;
+    window.currentData   = xpValues;
+    if (window.chartInstance) window.chartInstance.destroy();
+    const ctx = document.getElementById('mainChart').getContext('2d');
+    window.chartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{ label: 'XP Progress', data: xpValues, backgroundColor: window.isDark ? '#f97316' : '#a855f7', borderRadius: 10 }]
+      },
+      options: {
+        maintainAspectRatio: false,
+        scales: {
+          y: { grid: { color: window.isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }, ticks: { color: window.isDark ? '#64748b' : '#1e293b' } },
+          x: { ticks: { color: window.isDark ? '#64748b' : '#1e293b' } }
+        },
+        plugins: { legend: { labels: { color: window.isDark ? '#94a3b8' : '#1e293b' } } }
+      }
+    });
+  };
+
+  // ─── FIREBASE SYNC ───────────────────────────────────────────────────────────
+  const syncWithFirebase = (userId) => {
+    unsubscribeFirebase = onSnapshot(doc(db, "users", userId), (docSnap) => {
+      if (!docSnap.exists()) return;
+      const data = docSnap.data();
+
+      // Streak
+      document.getElementById("streakDisplay").innerText = `${data.streak || 0} Days`;
+
+      // Weekly Goal
+      if (data.weekly_goal !== undefined) {
+        document.getElementById('goalText').innerText = data.weekly_goal + "%";
+        document.getElementById('goalBar').style.width = data.weekly_goal + "%";
+      }
+
+      // Study Time Today (now always correct after reset)
+      const studyTime = data.studyTime || {};
+      document.getElementById('studyTimeToday').textContent = formatTime(studyTime.todayMinutes || 0);
+
+      // XP & Level
+      const totalXP = data.totalXP || 0;
+      document.getElementById('totalXPDisplay').textContent = totalXP.toLocaleString();
+      document.getElementById('levelDisplay').textContent = Math.floor(totalXP / 2000) + 1;
+
+      // Subject Chart
+      if (data.subjects && Object.keys(data.subjects).length > 0) {
+        window.updateCharts(Object.keys(data.subjects), Object.values(data.subjects));
+      } else {
+        window.updateCharts();
+      }
+    });
+  };
+
+  // ─── AUTH ────────────────────────────────────────────────────────────────────
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) { window.location.replace("signin.html"); return; }
+
+    window.userDocId = user.uid;
+    document.getElementById("userName").innerText = user.displayName || "Student";
+    if (user.photoURL) document.getElementById("profilePic").src = user.photoURL;
+
+    const userRef = doc(db, "users", user.uid);
+    const snap    = await getDoc(userRef);
+    const today   = dayjs().format('YYYY-MM-DD');
+
+    if (!snap.exists()) {
+      // Brand new user — create full document
+      await setDoc(userRef, {
+        name:          user.displayName || "Student",
+        email:         user.email,
+        photoURL:      user.photoURL || null,
+        streak:        1,
+        lastLoginDate: today,
+        weekly_goal:   72,
+        subjects:      {},
+        totalXP:       0,
+        createdAt:     serverTimestamp(),
+        studyTime: {
+          totalMinutes: 0,
+          todayMinutes: 0,
+          weekMinutes:  0,
+          lastUpdated:  today,       // ← tracks day reset
+          lastMonday:   getMondayOfWeek(), // ← tracks week reset
+          daysActive:   1
+        },
+        pomodoroStats: {
+          totalSessions: 0,
+          focusMinutes:  0,
+          breakMinutes:  0
+        },
+        testStats: {
+          totalTests:     0,
+          totalQuestions: 0,
+          correctAnswers: 0,
+          averageScore:   0
+        }
+      });
+    } else {
+      // Existing user — run daily/weekly reset (streak lives here only)
+      await runDailyReset(userRef, snap.data());
+    }
+
+    syncWithFirebase(user.uid);
+
+    setTimeout(() => {
+      document.getElementById("loader").classList.add("hide-loader");
+    }, 400);
+  });
+
+  // ─── CALENDAR RENDER ─────────────────────────────────────────────────────────
+  function renderCalendar() {
+    const daysContainer = document.getElementById("calendarDays");
+    document.getElementById("calendarMonth").innerText = window.viewDate.format("MMM YYYY");
+    daysContainer.innerHTML = "";
+    const startOfMonth = window.viewDate.startOf('month');
+    let offset = startOfMonth.day() === 0 ? 6 : startOfMonth.day() - 1;
+    for (let i = 0; i < offset; i++) daysContainer.innerHTML += `<div></div>`;
+    for (let i = 1; i <= window.viewDate.daysInMonth(); i++) {
+      const dateStr = window.viewDate.date(i).format("YYYY-MM-DD");
+      const isToday = dateStr === dayjs().format("YYYY-MM-DD");
+      const hasNote = window.reminders[dateStr];
+      daysContainer.innerHTML += `
+        <div onclick="addNote('${dateStr}')" class="h-10 flex items-center justify-center rounded-xl cursor-pointer transition-all text-sm
+        ${isToday ? 'bg-purple-600 text-white font-bold shadow-lg' : hasNote ? 'bg-pink-500/20 text-pink-400 border border-pink-500/30' : 'hover:bg-black/5 text-gray-500'}">
+        ${i}</div>`;
+    }
+  }
+
+  function renderUpcoming() {
+    const list = document.getElementById("upcomingList");
+    const keys = Object.keys(window.reminders).sort();
+    list.innerHTML = keys.length ? keys.map(k => `
+      <div class="p-4 bg-black/5 rounded-xl border-l-4 border-purple-500 flex justify-between items-center">
+        <div><b class="text-[10px] text-purple-400 uppercase">${k}</b><p>${window.reminders[k]}</p></div>
+        <button onclick="deleteNote('${k}')" class="text-xs text-gray-500 hover:text-red-500"><i class="fas fa-trash"></i></button>
+      </div>`).join('') : '<p class="text-gray-500 italic">No reminders.</p>';
+  }
+
+  // ─── PROFILE UPLOAD ──────────────────────────────────────────────────────────
+  document.getElementById('profileUpload').addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (file && file.type.startsWith('image/') && file.size < 2 * 1024 * 1024) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        document.getElementById('profilePic').src = reader.result;
+        localStorage.setItem("savedProfilePic", reader.result);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      alert("Please select a valid image file under 2MB.");
+    }
+  });
+
+  // ─── INIT ────────────────────────────────────────────────────────────────────
+  window.addEventListener('DOMContentLoaded', () => {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'light') {
+      window.isDark = false;
+      document.getElementById('htmlRoot').classList.add('light-mode');
+      document.getElementById('themeIcon').className = 'fas fa-moon text-purple-500';
+    }
+    const savedPic = localStorage.getItem("savedProfilePic");
+    if (savedPic) document.getElementById("profilePic").src = savedPic;
+    renderCalendar();
+    renderUpcoming();
+  });
+
+  window.addEventListener('beforeunload', () => {
+    if (window.chartInstance) window.chartInstance.destroy();
+    if (unsubscribeFirebase) unsubscribeFirebase();
+  });
+
+  console.log('✨ Dashboard loaded with fixed streak, daily reset & weekly reset!');
+</script>
+<script src="global.js"></script>
+</body>
+</html>

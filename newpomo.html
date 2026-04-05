@@ -1,0 +1,865 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Cosmic Pomodoro — Time Tracked</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg1:#0e0b1a; --bg2:#25173f;
+    --accent:#7b5bff; --accent-2:#b995ff;
+    --text:#f4eaff; --muted:rgba(244,234,255,0.65);
+    --glass-border:rgba(255,255,255,0.08);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system;}
+  body{
+    background: linear-gradient(180deg,var(--bg1), var(--bg2));
+    color:var(--text); display:flex; align-items:center; justify-content:center; overflow:hidden;
+  }
+
+  canvas#particles { position:fixed; inset:0; z-index:0; pointer-events:none; }
+
+  .app {
+    position:relative; z-index:2; width:420px; max-width:94vw; padding:22px;
+    border-radius:16px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    border:1px solid var(--glass-border);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.6), 0 0 50px rgba(123,91,255,0.08);
+    backdrop-filter: blur(10px) saturate(120%);
+  }
+
+  .title{font-weight:700; font-size:20px; letter-spacing:0.6px; margin:0 0 10px}
+  .subtitle{font-size:13px; color:var(--muted); margin-top:12px}
+
+  .session-indicator {
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 8px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    background: rgba(123, 91, 255, 0.1);
+    border: 1px solid rgba(123, 91, 255, 0.2);
+  }
+  .session-indicator.work { background: rgba(123, 91, 255, 0.15); }
+  .session-indicator.break { background: rgba(91, 255, 171, 0.15); border-color: rgba(91, 255, 171, 0.2); }
+
+  .row{display:flex; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap}
+  .btn{ background: linear-gradient(180deg,var(--accent), var(--accent-2)); border:none; color:white; padding:8px 12px; border-radius:10px; cursor:pointer; font-weight:700; box-shadow: 0 6px 20px rgba(123,91,255,0.14); transition: transform 0.2s, opacity 0.2s; }
+  .btn:hover { transform: translateY(-2px); }
+  .btn:active { transform: translateY(0); }
+  .btn.ghost{ background:transparent; border:1px solid var(--glass-border); color:var(--text); padding:8px 12px; }
+  .tiny{ padding:6px 8px; font-size:13px; }
+
+  .timer{ margin:14px 0; font-size:48px; font-weight:800; letter-spacing:1px; text-shadow: 0 0 18px rgba(200,160,255,0.18); text-align:center; }
+
+  .task-input{ display:flex; gap:8px; margin-top:12px; }
+  .task-input input{ flex:1; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.02); color:var(--text); outline:none; }
+  .task-list{ margin-top:12px; max-height:160px; overflow:auto; padding-right:6px; }
+  .task-row{ display:flex; align-items:center; gap:10px; background: rgba(255,255,255,0.02); border-radius:10px; padding:8px; margin-bottom:8px; border:1px solid rgba(255,255,255,0.02); justify-content:space-between; }
+  .task-left{ display:flex; align-items:center; gap:10px; flex: 1; }
+  .task-left label{ display:flex; align-items:center; gap:8px; cursor:pointer; }
+  .task-left input[type="checkbox"]{ width:18px; height:18px; border-radius:4px; accent-color:var(--accent); cursor:pointer; }
+  .task-title{ font-weight:600; word-break: break-word; }
+  .task-title.completed{ text-decoration:line-through; opacity:0.6; font-weight:500; }
+
+  .empty-msg{ color:var(--muted); padding:14px; border-radius:8px; background:rgba(255,255,255,0.015); text-align: center; }
+
+  .progress{ display:flex; gap:8px; margin-top:14px; justify-content:space-between; }
+  .progress .box{ background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:10px; border-radius:10px; width:30%; border:1px solid rgba(255,255,255,0.03); }
+  .progress .num{ font-weight:800; font-size:18px; text-align:center; }
+
+  .sync-status { font-size:11px; text-align:right; color:var(--muted); margin-top:6px; min-height:16px; }
+  .sync-status.syncing { color: #b995ff; }
+  .sync-status.synced  { color: #5bffa3; }
+  .sync-status.error   { color: #ff7b7b; }
+
+  .footer{ margin-top:14px; font-size:12px; color:var(--muted); text-align:center; }
+
+  .modal-backdrop{ position:fixed; inset:0; display:none; z-index:20; align-items:center; justify-content:center; background:rgba(0,0,0,0.45); backdrop-filter:blur(4px); }
+  .modal{ width:520px; max-width:94vw; background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border-radius:14px; padding:18px; border:1px solid rgba(255,255,255,0.06); }
+  .field{ margin:8px 0; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .field label{ min-width:140px; color:var(--muted); font-size:13px; }
+  .field input[type="number"], .field select, .field input[type="text"]{ padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.06); background:transparent; color:var(--text) }
+  .modal .actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:10px; }
+  .danger{ background:transparent; border:1px solid rgba(255,100,100,0.12); color:#ffb3b3 }
+
+  .theme-preview{ display:flex; gap:8px; }
+  .theme-swatch{ width:30%; height:48px; border-radius:8px; border:1px solid rgba(255,255,255,0.03); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:12px; transition: transform 0.2s; }
+  .theme-swatch:hover { transform: scale(1.05); }
+
+  .notification-permission {
+    background: rgba(255, 200, 100, 0.1);
+    border: 1px solid rgba(255, 200, 100, 0.2);
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    font-size: 13px;
+    display: none;
+  }
+
+  @media(max-width:520px){
+    .timer{ font-size:36px }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="particles"></canvas>
+
+<div class="app" role="application" aria-label="Cosmic Pomodoro">
+  <div style="display:flex; justify-content:space-between; align-items:center;">
+    <div>
+      <div class="title">✦ Cosmic Pomodoro ✦</div>
+      <div style="font-size:12px; color:var(--muted)">Time tracking enabled</div>
+    </div>
+    <div style="display:flex; gap:8px; align-items:center">
+      <button id="settingsBtn" class="btn tiny ghost" title="Settings (Esc)">⚙ Settings</button>
+      <button id="themeToggle" class="btn tiny" title="Theme">Theme</button>
+    </div>
+  </div>
+
+  <div id="notificationPrompt" class="notification-permission">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <span>🔔 Enable notifications for timer alerts?</span>
+      <div style="display: flex; gap: 8px;">
+        <button id="enableNotifs" class="btn tiny" style="font-size: 11px;">Enable</button>
+        <button id="skipNotifs" class="btn tiny ghost" style="font-size: 11px;">Skip</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="session-indicator" id="sessionIndicator">🎯 Focus Session</div>
+
+  <div style="margin-top:12px; display:flex; gap:8px; justify-content:center; align-items:center; flex-wrap:wrap;">
+    <button id="autoBtn" class="btn tiny">⚡ Auto: ON</button>
+    <button id="focusBtn" class="btn tiny ghost">🔕 Focus: OFF</button>
+  </div>
+
+  <div class="timer" id="timerDisplay">25:00</div>
+
+  <div class="row" style="margin-top:6px">
+    <button id="startPause" class="btn" title="Start/Pause (Space)">Start</button>
+    <button id="resetBtn" class="btn ghost" title="Reset (Ctrl+R)">Reset</button>
+    <button id="skipBtn" class="btn ghost tiny">Skip</button>
+  </div>
+
+  <div class="subtitle">✦ Cosmic Tasks ✦</div>
+
+  <div class="task-input">
+    <input id="taskInput" placeholder="Enter a new task..." aria-label="Task input" />
+    <button id="addTaskBtn" class="btn">Add</button>
+  </div>
+
+  <div class="task-list" id="taskList" aria-live="polite">
+    <div class="empty-msg" id="emptyMsg">No tasks yet. Begin your cosmic journey!</div>
+  </div>
+
+  <div class="subtitle">✦ Cosmic Progress ✦</div>
+  <div class="progress">
+    <div class="box"><div style="color:var(--muted); font-size:12px">Cycles</div><div class="num" id="cyclesNum">0</div></div>
+    <div class="box"><div style="color:var(--muted); font-size:12px">Minutes</div><div class="num" id="minutesNum">0</div></div>
+    <div class="box"><div style="color:var(--muted); font-size:12px">Streak</div><div class="num" id="streakNum">0</div></div>
+  </div>
+
+  <div class="sync-status" id="syncStatus"></div>
+
+  <div class="footer">✧ Cosmic Productivity – Navigate your universe of tasks ✧<br>
+    <span style="font-size: 10px; opacity: 0.7;">Keyboard: Space=Start/Pause, Esc=Close, Ctrl+R=Reset</span>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-hidden="true">
+  <div class="modal" role="document">
+    <h3>Settings</h3>
+
+    <div class="field">
+      <label>Durations (minutes)</label>
+      <div style="display:flex; gap:8px; flex:1; flex-wrap:wrap">
+        <input id="workDur" type="number" min="1" max="240" value="25" style="width:70px" /> <span style="align-self:center; color:var(--muted)">Work</span>
+        <input id="shortDur" type="number" min="1" max="60" value="5" style="width:70px" /> <span style="align-self:center; color:var(--muted)">Short break</span>
+        <input id="longDur" type="number" min="1" max="120" value="15" style="width:70px" /> <span style="align-self:center; color:var(--muted)">Long break</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Theme</label>
+      <div class="theme-preview" style="flex:1">
+        <div class="theme-swatch" data-theme="cosmic" id="sw-cosmic" title="Cosmic Purple" style="background:linear-gradient(180deg,#1a1140,#2d1b5f)">Cosmic</div>
+        <div class="theme-swatch" data-theme="light" id="sw-light" title="Light Minimal" style="background:linear-gradient(180deg,#f8fbff,#eef4ff); color:#111">Light</div>
+        <div class="theme-swatch" data-theme="deep" id="sw-deep" title="Deep Nebula" style="background:linear-gradient(180deg,#0d0720,#160733)">Deep</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Sound</label>
+      <div style="flex:1; display:flex; gap:8px; align-items:center;">
+        <select id="soundSelect">
+          <option value="soft">Soft Cosmic Bell</option>
+          <option value="spacey">Spacey Nebula Chime</option>
+          <option value="twinkle">Sparkle Twinkle</option>
+          <option value="none">No Sound</option>
+        </select>
+        <button id="previewSound" class="btn tiny">Preview</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Auto-cycle</label>
+      <div style="flex:1">
+        <button id="autoToggleModal" class="btn tiny">Auto: ON</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Other</label>
+      <div style="flex:1; display:flex; gap:8px">
+        <button id="resetData" class="btn danger tiny">Reset saved data</button>
+        <button id="closeModal" class="btn ghost tiny">Close</button>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="saveSettings" class="btn">Save</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { db, auth } from "./firebase.js";
+import { 
+  doc, updateDoc, getDoc, setDoc, increment 
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+const STORAGE_KEY = 'cosmic_pomodoro_debugged_v2';
+const defaultState = {
+  work:25, short:5, long:15,
+  auto:true, cycles:0, minutes:0,
+  lastActiveDate: new Date().toDateString(),
+  streak: 0,
+  tasks:[], theme:'cosmic',
+  sound: {key:'soft'},
+  focusMode:false,
+  notificationPermission: false
+};
+
+let currentUser = null;
+let syncTimeout = null;
+
+// ─── LOCAL STATE ────────────────────────────────────────────────────────────
+let state = (function load(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) {
+      const loaded = JSON.parse(raw);
+      const today = new Date().toDateString();
+      if(loaded.lastActiveDate !== today) {
+        loaded.streak = (loaded.streak || 0) + 1;
+        loaded.lastActiveDate = today;
+      }
+      return Object.assign({}, defaultState, loaded);
+    }
+  }catch(e){console.warn('Failed to load state:', e)}
+  return JSON.parse(JSON.stringify(defaultState));
+})();
+
+function saveState(){
+  try {
+    const stateToSave = {...state};
+    delete stateToSave.customAudio;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+  } catch(e) {
+    console.error('Failed to save state:', e);
+  }
+}
+
+// ─── SYNC STATUS UI ──────────────────────────────────────────────────────────
+const syncStatusEl = document.getElementById('syncStatus');
+function setSyncStatus(type, msg) {
+  syncStatusEl.textContent = msg;
+  syncStatusEl.className = 'sync-status ' + type;
+  if(type === 'synced') setTimeout(() => { syncStatusEl.textContent = ''; syncStatusEl.className = 'sync-status'; }, 3000);
+}
+
+// ─── GET DAY INDEX (Mon=0 ... Sun=6) ─────────────────────────────────────────
+function getTodayIndex() {
+  const day = new Date().getDay(); // 0=Sun, 1=Mon ... 6=Sat
+  return day === 0 ? 6 : day - 1;
+}
+
+// ─── LOAD FROM FIREBASE ON LOGIN ─────────────────────────────────────────────
+async function loadFromFirebase(uid) {
+  try {
+    setSyncStatus('syncing', '☁ Loading from cloud...');
+    const userRef = doc(db, 'users', uid);
+    const snap = await getDoc(userRef);
+    if(!snap.exists()) {
+      setSyncStatus('', '');
+      return;
+    }
+    const data = snap.data();
+    const pomo = data.pomodoro || {};
+
+    if(pomo.cycles !== undefined)  state.cycles  = pomo.cycles;
+    if(pomo.minutes !== undefined) state.minutes = pomo.minutes;
+    if(pomo.streak !== undefined)  state.streak  = pomo.streak;
+    if(pomo.tasks !== undefined)   state.tasks   = pomo.tasks;
+    if(pomo.lastActiveDate !== undefined) state.lastActiveDate = pomo.lastActiveDate;
+
+    saveState();
+    renderTasks();
+    updateUI();
+    setSyncStatus('synced', '✓ Synced from cloud');
+    console.log('✅ Loaded Pomodoro state from Firebase');
+  } catch(e) {
+    console.error('Failed to load from Firebase:', e);
+    setSyncStatus('error', '✗ Cloud load failed');
+  }
+}
+
+// ─── SAVE PROGRESS TO FIREBASE (debounced) ───────────────────────────────────
+function scheduleSyncToFirebase() {
+  if(!currentUser) return;
+  clearTimeout(syncTimeout);
+  syncTimeout = setTimeout(() => syncToFirebase(), 1500);
+}
+
+async function syncToFirebase() {
+  if(!currentUser) return;
+  try {
+    setSyncStatus('syncing', '☁ Saving...');
+    const userRef = doc(db, 'users', currentUser.uid);
+    await updateDoc(userRef, {
+      'pomodoro.cycles':          state.cycles,
+      'pomodoro.minutes':         state.minutes,
+      'pomodoro.streak':          state.streak,
+      'pomodoro.tasks':           state.tasks,
+      'pomodoro.lastActiveDate':  state.lastActiveDate,
+      'pomodoro.lastSync':        new Date().toISOString()
+    });
+    setSyncStatus('synced', '✓ Saved to cloud');
+    console.log('✅ Pomodoro state synced to Firebase');
+  } catch(e) {
+    console.error('Failed to sync to Firebase:', e);
+    setSyncStatus('error', '✗ Cloud save failed');
+  }
+}
+
+// ─── SAVE POMODORO SESSION (XP + study time + weeklyActivity) ────────────────
+async function savePomodoroSession(minutes, sessionType) {
+  if(!currentUser) return;
+  try {
+    const userRef = doc(db, 'users', currentUser.uid);
+    const today = new Date().toISOString().split('T')[0];
+    const snap = await getDoc(userRef);
+    if(!snap.exists()) return;
+    const data = snap.data();
+
+    const todayMinutes = data.studyTime?.lastUpdated === today
+      ? (data.studyTime?.todayMinutes || 0) + minutes
+      : minutes;
+
+    const updates = {
+      'studyTime.totalMinutes':        increment(minutes),
+      'studyTime.todayMinutes':        todayMinutes,
+      'studyTime.weekMinutes':         increment(minutes),
+      'studyTime.lastUpdated':         today,
+      'pomodoroStats.totalSessions':   increment(1),
+      'pomodoroStats.lastSessionDate': today
+    };
+
+    if(sessionType === 'work') {
+      updates['pomodoroStats.focusMinutes'] = increment(minutes);
+      updates['totalXP'] = increment(minutes * 2);
+    } else {
+      updates['pomodoroStats.breakMinutes'] = increment(minutes);
+    }
+
+    // ── UPDATE weeklyActivity ─────────────────────────────────────────────────
+    // Only count focus (work) sessions toward the activity chart
+    if(sessionType === 'work') {
+      const currentActivity = data.weeklyActivity || [0, 0, 0, 0, 0, 0, 0];
+      const dayIndex = getTodayIndex(); // Mon=0 ... Sun=6
+      currentActivity[dayIndex] = (currentActivity[dayIndex] || 0) + minutes;
+      updates['weeklyActivity'] = currentActivity;
+      console.log(`✅ weeklyActivity: day ${dayIndex} += ${minutes} min`);
+    }
+
+    await updateDoc(userRef, updates);
+    console.log(`✅ Session saved: ${minutes}min (${sessionType})`);
+  } catch(e) {
+    console.error('Failed to save session:', e);
+  }
+}
+
+// ─── DOM REFS ────────────────────────────────────────────────────────────────
+const canvas           = document.getElementById('particles');
+const ctx              = canvas.getContext('2d', {alpha:true});
+const timerDisplay     = document.getElementById('timerDisplay');
+const sessionIndicator = document.getElementById('sessionIndicator');
+const startPauseBtn    = document.getElementById('startPause');
+const resetBtn         = document.getElementById('resetBtn');
+const skipBtn          = document.getElementById('skipBtn');
+const autoBtn          = document.getElementById('autoBtn');
+const focusBtn         = document.getElementById('focusBtn');
+const addTaskBtn       = document.getElementById('addTaskBtn');
+const taskInput        = document.getElementById('taskInput');
+const taskListEl       = document.getElementById('taskList');
+const emptyMsg         = document.getElementById('emptyMsg');
+const cyclesNum        = document.getElementById('cyclesNum');
+const minutesNum       = document.getElementById('minutesNum');
+const streakNum        = document.getElementById('streakNum');
+const settingsBtn      = document.getElementById('settingsBtn');
+const modalBackdrop    = document.getElementById('modalBackdrop');
+const closeModal       = document.getElementById('closeModal');
+const saveSettings     = document.getElementById('saveSettings');
+const workDur          = document.getElementById('workDur');
+const shortDur         = document.getElementById('shortDur');
+const longDur          = document.getElementById('longDur');
+const soundSelect      = document.getElementById('soundSelect');
+const previewSound     = document.getElementById('previewSound');
+const autoToggleModal  = document.getElementById('autoToggleModal');
+const resetData        = document.getElementById('resetData');
+const themeToggle      = document.getElementById('themeToggle');
+const notificationPrompt = document.getElementById('notificationPrompt');
+const enableNotifs     = document.getElementById('enableNotifs');
+const skipNotifs       = document.getElementById('skipNotifs');
+
+// ─── THEMES ──────────────────────────────────────────────────────────────────
+const THEMES = {
+  cosmic: { '--bg1':'#0e0b1a','--bg2':'#25173f','--accent':'#7b5bff','--accent-2':'#b995ff','--text':'#f4eaff','--muted':'rgba(244,234,255,0.65)','--glass-border':'rgba(255,255,255,0.08)'},
+  light:  { '--bg1':'#eef4ff','--bg2':'#f6f9ff','--accent':'#6b4cff','--accent-2':'#9c7bff','--text':'#0c1222','--muted':'rgba(12,18,34,0.6)','--glass-border':'rgba(12,18,34,0.06)'},
+  deep:   { '--bg1':'#04010a','--bg2':'#0a0320','--accent':'#6f2aff','--accent-2':'#c26bff','--text':'#f8eaff','--muted':'rgba(248,234,255,0.55)','--glass-border':'rgba(255,255,255,0.06)'}
+};
+function applyTheme(name){
+  const map = THEMES[name] || THEMES.cosmic;
+  for(const k in map) document.documentElement.style.setProperty(k, map[k]);
+  state.theme = name; saveState();
+}
+applyTheme(state.theme || 'cosmic');
+
+// ─── TIMER LOGIC ─────────────────────────────────────────────────────────────
+let mode = 'work';
+let remaining = state.work * 60;
+let timerId = null;
+let running = false;
+let secondsAccumulator = 0;
+let endTime = null;
+
+const sessionLabels = {
+  work: '🎯 Focus Session',
+  short: '☕ Short Break',
+  long: '🌟 Long Break'
+};
+
+function formatTime(s){
+  const m = Math.floor(s/60), sec = s%60;
+  return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+function formatMinutes(mins) {
+  if(mins < 60) return mins;
+  return Math.floor(mins/60) + 'h ' + (mins%60) + 'm';
+}
+
+function updateUI(){
+  timerDisplay.textContent = formatTime(remaining);
+  sessionIndicator.textContent = sessionLabels[mode];
+  sessionIndicator.className = 'session-indicator ' + (mode === 'work' ? 'work' : 'break');
+  cyclesNum.textContent  = state.cycles;
+  minutesNum.textContent = formatMinutes(state.minutes);
+  streakNum.textContent  = state.streak;
+  autoBtn.textContent  = state.auto       ? '⚡ Auto: ON'  : '⚡ Auto: OFF';
+  focusBtn.textContent = state.focusMode  ? '🔕 Focus: ON' : '🔔 Focus: OFF';
+  startPauseBtn.textContent = running ? 'Pause' : 'Start';
+}
+updateUI();
+
+function tick(){
+  if(!endTime) return;
+  const now = Date.now();
+  const newRemaining = Math.max(0, Math.ceil((endTime - now) / 1000));
+  if(newRemaining !== remaining){
+    const diff = remaining - newRemaining;
+    remaining = newRemaining;
+    secondsAccumulator += diff;
+    while(secondsAccumulator >= 60){
+      state.minutes++;
+      secondsAccumulator -= 60;
+      saveState();
+      scheduleSyncToFirebase();
+    }
+    if(remaining <= 0) onSessionEnd();
+    else updateUI();
+  }
+}
+
+function startTimer(){
+  if(running) return;
+  running = true;
+  endTime = Date.now() + (remaining * 1000);
+  updateUI();
+  timerId = setInterval(tick, 100);
+  if(window.audioCtx && window.audioCtx.state === 'suspended') window.audioCtx.resume();
+}
+
+function stopTimer(){
+  running = false;
+  clearInterval(timerId);
+  timerId = null;
+  endTime = null;
+  updateUI();
+}
+
+function resetTimer(){
+  stopTimer();
+  mode = 'work';
+  remaining = state.work * 60;
+  secondsAccumulator = 0;
+  updateUI();
+}
+
+function skipSession(){ remaining = 1; }
+
+startPauseBtn.addEventListener('click', ()=> running ? stopTimer() : startTimer());
+resetBtn.addEventListener('click', resetTimer);
+skipBtn.addEventListener('click', skipSession);
+
+// ─── SESSION END ─────────────────────────────────────────────────────────────
+async function onSessionEnd(){
+  stopTimer();
+  const sessionMinutes = mode === 'work' ? state.work : mode === 'short' ? state.short : state.long;
+
+  if(mode === 'work'){
+    state.cycles++;
+    await savePomodoroSession(sessionMinutes, 'work'); // ← updates weeklyActivity here
+  } else {
+    await savePomodoroSession(sessionMinutes, 'break');
+  }
+
+  if(mode === 'work'){
+    mode = (state.cycles % 4 === 0) ? 'long' : 'short';
+    remaining = (mode === 'long' ? state.long : state.short) * 60;
+  } else {
+    mode = 'work';
+    remaining = state.work * 60;
+  }
+
+  if(!state.focusMode){ playSelectedSound(); showBrowserNotification(); }
+  if(state.auto) setTimeout(() => startTimer(), 1000);
+
+  saveState();
+  scheduleSyncToFirebase();
+  updateUI();
+}
+
+function showBrowserNotification(){
+  if('Notification' in window && Notification.permission === 'granted'){
+    const title = mode === 'work' ? '☕ Break Time!' : '💪 Back to Work!';
+    new Notification(title, {
+      body: mode === 'work' ? 'Time for a well-deserved break!' : 'Ready to focus again?',
+      icon: 'https://em-content.zobj.net/thumbs/120/apple/354/ringed-planet_1fa90.png'
+    });
+  }
+}
+
+// ─── TASKS ───────────────────────────────────────────────────────────────────
+function renderTasks(){
+  taskListEl.innerHTML = '';
+  if(!state.tasks || state.tasks.length === 0){
+    emptyMsg.style.display = 'block';
+    taskListEl.appendChild(emptyMsg);
+    return;
+  }
+  emptyMsg.style.display = 'none';
+  state.tasks.forEach(t => {
+    const row      = document.createElement('div');
+    row.className  = 'task-row';
+    const leftDiv  = document.createElement('div');
+    leftDiv.className = 'task-left';
+    const label    = document.createElement('label');
+    const checkbox = document.createElement('input');
+    checkbox.type    = 'checkbox';
+    checkbox.checked = t.done;
+    checkbox.addEventListener('change', ()=>{
+      t.done = checkbox.checked;
+      saveState();
+      scheduleSyncToFirebase();
+      renderTasks();
+    });
+    const titleDiv = document.createElement('div');
+    titleDiv.className = 'task-title' + (t.done ? ' completed' : '');
+    titleDiv.textContent = t.text;
+    const rightDiv = document.createElement('div');
+    rightDiv.style.cssText = 'display:flex; gap:8px; align-items:center;';
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn tiny ghost';
+    delBtn.textContent = '✖';
+    delBtn.setAttribute('aria-label', 'Delete task');
+    delBtn.addEventListener('click', ()=>{
+      if(confirm(`Delete task: "${t.text}"?`)){
+        state.tasks = state.tasks.filter(x => x.id !== t.id);
+        saveState();
+        scheduleSyncToFirebase();
+        renderTasks();
+      }
+    });
+    label.appendChild(checkbox);
+    label.appendChild(titleDiv);
+    leftDiv.appendChild(label);
+    rightDiv.appendChild(delBtn);
+    row.appendChild(leftDiv);
+    row.appendChild(rightDiv);
+    taskListEl.appendChild(row);
+  });
+}
+
+function addTaskFromInput(){
+  const v = taskInput.value.trim();
+  if(!v) return;
+  if(v.length > 200){ alert('Task text is too long (max 200 characters)'); return; }
+  state.tasks.push({ id: Date.now() + '-' + Math.floor(Math.random()*9999), text:v, done:false });
+  taskInput.value = '';
+  saveState();
+  scheduleSyncToFirebase();
+  renderTasks();
+}
+
+addTaskBtn.addEventListener('click', addTaskFromInput);
+taskInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') addTaskFromInput(); });
+
+// ─── SETTINGS MODAL ──────────────────────────────────────────────────────────
+settingsBtn.addEventListener('click', openModal);
+closeModal.addEventListener('click', closeModalFn);
+modalBackdrop.addEventListener('click', (e)=>{
+  if(e.target === modalBackdrop && confirm('Close settings without saving?')) closeModalFn();
+});
+saveSettings.addEventListener('click', saveModalSettings);
+
+document.getElementById('sw-cosmic').addEventListener('click', ()=> applyTheme('cosmic'));
+document.getElementById('sw-light').addEventListener('click',  ()=> applyTheme('light'));
+document.getElementById('sw-deep').addEventListener('click',   ()=> applyTheme('deep'));
+
+autoToggleModal.addEventListener('click', ()=>{
+  state.auto = !state.auto;
+  autoToggleModal.textContent = state.auto ? 'Auto: ON' : 'Auto: OFF';
+  saveState(); updateUI();
+});
+
+function openModal(){
+  modalBackdrop.style.display = 'flex';
+  workDur.value   = state.work;
+  shortDur.value  = state.short;
+  longDur.value   = state.long;
+  soundSelect.value = state.sound.key || 'soft';
+  autoToggleModal.textContent = state.auto ? 'Auto: ON' : 'Auto: OFF';
+}
+function closeModalFn(){ modalBackdrop.style.display = 'none'; }
+
+function saveModalSettings(){
+  const w = parseInt(workDur.value), s = parseInt(shortDur.value), l = parseInt(longDur.value);
+  if(isNaN(w)||w<1||w>240){ alert('Work duration must be between 1-240 minutes'); return; }
+  if(isNaN(s)||s<1||s>60) { alert('Short break must be between 1-60 minutes'); return; }
+  if(isNaN(l)||l<1||l>120){ alert('Long break must be between 1-120 minutes'); return; }
+  state.work = w; state.short = s; state.long = l;
+  state.sound.key = soundSelect.value;
+  saveState();
+  if(!running){ mode = 'work'; remaining = state.work * 60; secondsAccumulator = 0; }
+  updateUI(); closeModalFn();
+}
+
+resetData.addEventListener('click', ()=>{
+  if(confirm('Reset all saved data? This will clear tasks, progress and settings.')){
+    localStorage.removeItem(STORAGE_KEY);
+    location.reload();
+  }
+});
+
+themeToggle.addEventListener('click', ()=>{
+  applyTheme(state.theme === 'cosmic' ? 'light' : state.theme === 'light' ? 'deep' : 'cosmic');
+});
+autoBtn.addEventListener('click',  ()=>{ state.auto = !state.auto; saveState(); updateUI(); });
+focusBtn.addEventListener('click', ()=>{ state.focusMode = !state.focusMode; saveState(); updateUI(); });
+
+document.addEventListener('keydown', (e) => {
+  if(['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName)) return;
+  if(e.code === 'Space')  { e.preventDefault(); running ? stopTimer() : startTimer(); }
+  if(e.code === 'Escape' && modalBackdrop.style.display === 'flex') { e.preventDefault(); closeModalFn(); }
+  if(e.code === 'KeyR' && e.ctrlKey) { e.preventDefault(); resetTimer(); }
+});
+
+// ─── AUDIO ───────────────────────────────────────────────────────────────────
+let audioCtx = null;
+window.audioCtx = audioCtx;
+
+function ensureAudioCtx(){
+  if(!audioCtx){ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); window.audioCtx = audioCtx; }
+  if(audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{});
+}
+function playSelectedSound(){
+  const key = state.sound.key || 'soft';
+  if(key === 'none') return;
+  if(key === 'soft')   { playSoftBell();    return; }
+  if(key === 'spacey') { playSpaceyChime(); return; }
+  if(key === 'twinkle'){ playTwinkle();     return; }
+}
+previewSound.addEventListener('click', ()=>{
+  const s = soundSelect.value;
+  if(s === 'none') return;
+  if(s === 'soft')   playSoftBell();
+  if(s === 'spacey') playSpaceyChime();
+  if(s === 'twinkle') playTwinkle();
+});
+
+function playSoftBell(){
+  ensureAudioCtx(); const c = audioCtx, now = c.currentTime;
+  const o = c.createOscillator(), g = c.createGain();
+  o.type = 'sine'; o.frequency.value = 660;
+  o.connect(g); g.connect(c.destination); g.gain.value = 0;
+  g.gain.linearRampToValueAtTime(0.12, now+0.01);
+  g.gain.linearRampToValueAtTime(0.0001, now+1.6);
+  o.start(now); o.stop(now+1.6);
+  const o2 = c.createOscillator(), g2 = c.createGain();
+  o2.type = 'sine'; o2.frequency.value = 990;
+  o2.connect(g2); g2.connect(c.destination); g2.gain.value = 0;
+  g2.gain.linearRampToValueAtTime(0.06, now+0.02);
+  g2.gain.linearRampToValueAtTime(0.0001, now+1.8);
+  o2.start(now+0.02); o2.stop(now+1.8);
+}
+function playSpaceyChime(){
+  ensureAudioCtx(); const c = audioCtx, now = c.currentTime;
+  [440,660,880].forEach((f,i)=>{
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = 'triangle'; o.frequency.value = f*(1+(Math.random()-0.5)*0.01);
+    o.connect(g); g.connect(c.destination); g.gain.value = 0;
+    const d = i*0.12;
+    g.gain.linearRampToValueAtTime(0.08/(i+1), now+0.02+d);
+    g.gain.exponentialRampToValueAtTime(0.0001, now+1.9+d);
+    o.start(now+d); o.stop(now+2.2+d);
+  });
+  const buf = c.createBuffer(1, c.sampleRate, c.sampleRate);
+  const out = buf.getChannelData(0);
+  for(let i=0;i<c.sampleRate;i++) out[i] = (Math.random()*2-1)*Math.exp(-i/c.sampleRate*3);
+  const n = c.createBufferSource(), ng = c.createGain();
+  n.buffer = buf; n.connect(ng); ng.connect(c.destination); ng.gain.value = 0.02; n.start(now+0.05);
+}
+function playTwinkle(){
+  ensureAudioCtx(); const c = audioCtx, now = c.currentTime;
+  [880,1320,1760].forEach((f,i)=>{
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = 'sine'; o.frequency.value = f;
+    o.connect(g); g.connect(c.destination); g.gain.value = 0;
+    const d = i*0.06;
+    g.gain.linearRampToValueAtTime(0.09, now+0.01+d);
+    g.gain.exponentialRampToValueAtTime(0.0001, now+0.5+d);
+    o.start(now+d); o.stop(now+0.6+d);
+  });
+}
+
+// ─── NOTIFICATIONS ───────────────────────────────────────────────────────────
+if('Notification' in window && Notification.permission === 'default' && !state.notificationPermission){
+  notificationPrompt.style.display = 'block';
+  enableNotifs.addEventListener('click', async () => {
+    const p = await Notification.requestPermission();
+    state.notificationPermission = true; saveState();
+    notificationPrompt.style.display = 'none';
+    if(p === 'granted') new Notification('🎉 Notifications Enabled!', { body: 'You\'ll now receive alerts when your timer completes.' });
+  });
+  skipNotifs.addEventListener('click', () => {
+    state.notificationPermission = true; saveState();
+    notificationPrompt.style.display = 'none';
+  });
+}
+
+// ─── AUTH LISTENER ────────────────────────────────────────────────────────────
+onAuthStateChanged(auth, async (user) => {
+  if(user){
+    currentUser = user;
+    console.log('✅ Signed in:', user.displayName || user.email);
+    await loadFromFirebase(user.uid);
+  } else {
+    currentUser = null;
+    console.log('⚠️ Not signed in — data saves locally only');
+    setSyncStatus('', '');
+  }
+});
+
+// ─── PARTICLES ───────────────────────────────────────────────────────────────
+let W = innerWidth, H = innerHeight;
+canvas.width = W; canvas.height = H;
+const stars = [], clouds = [];
+
+function initParticles(){
+  W = innerWidth; H = innerHeight; canvas.width = W; canvas.height = H;
+  stars.length = 0; clouds.length = 0;
+  for(let i=0;i<Math.round((W*H)/7000);i++){
+    stars.push({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.6+0.3,a:Math.random()*0.9+0.1,dx:(Math.random()-0.5)*0.05,dy:(Math.random()-0.5)*0.02});
+  }
+  for(let i=0;i<6;i++){
+    clouds.push({x:Math.random()*W,y:Math.random()*H*0.8,r:Math.max(W,H)*(0.12+Math.random()*0.25),hue:260+Math.random()*80,a:0.06+Math.random()*0.08,vx:(Math.random()-0.5)*0.02});
+  }
+}
+initParticles();
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  const g = ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'rgba(6,2,20,0.65)'); g.addColorStop(1,'rgba(40,20,80,0.45)');
+  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+  clouds.forEach(c=>{
+    const grd = ctx.createRadialGradient(c.x,c.y,c.r*0.02,c.x,c.y,c.r);
+    grd.addColorStop(0,`hsla(${c.hue},70%,70%,${c.a})`);
+    grd.addColorStop(0.4,`hsla(${c.hue+30},60%,55%,${c.a*0.7})`);
+    grd.addColorStop(1,'rgba(10,6,30,0)');
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(c.x,c.y,c.r,0,Math.PI*2); ctx.fill();
+  });
+  ctx.globalCompositeOperation = 'source-over';
+  const core = ctx.createRadialGradient(W*0.5,H*0.3,10,W*0.5,H*0.3,Math.max(W,H)*0.6);
+  core.addColorStop(0,'rgba(180,140,255,0.065)'); core.addColorStop(0.4,'rgba(120,80,200,0.03)'); core.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle = core; ctx.fillRect(0,0,W,H);
+  stars.forEach(s=>{
+    ctx.beginPath(); ctx.fillStyle = `rgba(255,255,255,${s.a})`; ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill();
+  });
+  if(Math.random()<0.01) shootMeteor();
+}
+function updateParticles(){
+  stars.forEach(s=>{
+    s.x+=s.dx; s.y+=s.dy;
+    if(s.x<-10)s.x=W+10; if(s.x>W+10)s.x=-10;
+    if(s.y<-10)s.y=H+10; if(s.y>H+10)s.y=-10;
+  });
+  clouds.forEach(c=>{
+    c.x+=c.vx;
+    if(c.x<-c.r)c.x=W+c.r; if(c.x>W+c.r)c.x=-c.r;
+  });
+}
+function loopParticles(){ updateParticles(); draw(); requestAnimationFrame(loopParticles); }
+loopParticles();
+
+function shootMeteor(){
+  const x1=Math.random()*W*0.6,y1=Math.random()*H*0.4,len=150+Math.random()*300,angle=-0.6-Math.random()*0.4;
+  const sx=x1,sy=y1,ex=sx+Math.cos(angle)*len,ey=sy+Math.sin(angle)*len;
+  const duration=700+Math.random()*600,start=performance.now();
+  function dm(now){ const p=(now-start)/duration; if(p>1)return;
+    const cx=sx+(ex-sx)*p,cy=sy+(ey-sy)*p;
+    ctx.save(); ctx.globalCompositeOperation='lighter';
+    const g=ctx.createLinearGradient(sx,sy,ex,ey);
+    g.addColorStop(0,'rgba(255,255,255,0.9)'); g.addColorStop(0.6,'rgba(200,160,255,0.4)'); g.addColorStop(1,'rgba(200,160,255,0)');
+    ctx.strokeStyle=g; ctx.lineWidth=2+3*(1-p);
+    ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(cx,cy); ctx.stroke(); ctx.restore();
+    requestAnimationFrame(dm);
+  }
+  requestAnimationFrame(dm);
+}
+
+window.addEventListener('resize', initParticles);
+renderTasks();
+updateUI();
+console.log('✨ Cosmic Pomodoro with weeklyActivity sync loaded!');
+</script>
+ <script src="global.js"></script>
+</body>
+</html>

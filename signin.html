@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SmartStudy AI - Sign In</title>
+  <meta name="description" content="Sign in to SmartStudy AI to access personalized study materials and quizzes">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    body { background: radial-gradient(circle at top right, #1e293b, #0f172a); }
+    .glass-card {
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .auth-btn { 
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+    }
+    .auth-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.3);
+    }
+    .auth-btn:active:not(:disabled) {
+      transform: translateY(0);
+    }
+    .auth-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .auth-btn.loading::after {
+      content: "";
+      position: absolute;
+      right: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: translateY(-50%) rotate(360deg); }
+    }
+    .hidden { display: none !important; }
+    
+    #loader {
+      position: fixed;
+      inset: 0;
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+
+    #loader img {
+      width: 120px;
+      height: auto;
+    }
+
+    #loader h2 {
+      margin-top: 15px;
+      font-size: 22px;
+      color: #0f172a;
+    }
+
+    #loader p {
+      margin-top: 5px;
+      font-size: 14px;
+      color: #475569;
+    }
+
+    .hide-loader {
+      opacity: 0;
+      transition: opacity 0.6s ease;
+      pointer-events: none;
+    }
+    
+    @keyframes slowZoom {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    .animate-slow-zoom { animation: slowZoom 20s infinite ease-in-out; }
+
+    .pulse-ring {
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* FIXED: Image container styling */
+    .hero-image-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .hero-image-container img {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+    }
+
+    /* Responsive improvements */
+    @media (max-width: 1023px) {
+      .glass-card {
+        height: auto !important;
+        min-height: 100vh;
+      }
+    }
+  </style>
+</head>
+<body class="flex items-center justify-center min-h-screen bg-[#0f172a]">
+  <div id="loader">
+      <img src="online-class.gif" alt="Smart Study Loading" onerror="this.remove()">
+      <h2>Smart Study with AI</h2>
+      <p>Loading your study space...</p>
+  </div>
+
+  <div class="flex flex-col lg:flex-row w-full max-w-6xl lg:h-[90vh] glass-card shadow-2xl rounded-[2.5rem] overflow-hidden m-4">
+    
+    <!-- Left Side - Authentication -->
+    <div class="w-full lg:w-1/2 p-10 flex flex-col justify-center text-center relative bg-slate-900/50">
+        <div class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-500/20">
+            <i class="fa-solid fa-brain text-white text-3xl" aria-hidden="true"></i>
+        </div>
+
+        <!-- Sign In View (Default) -->
+        <div id="logged-out-view">
+            <h2 class="text-3xl font-black mb-2 text-white tracking-tight">Welcome Back</h2>
+            <p class="text-slate-400 text-sm mb-8 font-medium">Continue your journey to mastery</p>
+
+            <div class="space-y-4 max-w-sm mx-auto">
+                <button id="google-btn"
+                        class="auth-btn flex items-center justify-center w-full px-6 py-3.5 bg-white hover:bg-gray-50 rounded-2xl text-slate-900 font-bold text-sm shadow-lg"
+                        aria-label="Sign in with Google">
+                  <img src="https://www.svgrepo.com/show/475656/google-color.svg" 
+                       alt="" 
+                       class="w-5 h-5 mr-3" />
+                  Sign in with Google
+                </button>
+
+                <button id="github-btn"
+                        class="auth-btn flex items-center justify-center w-full px-6 py-3.5 bg-slate-950 hover:bg-black border border-white/10 rounded-2xl text-white font-bold text-sm shadow-lg"
+                        aria-label="Sign in with GitHub">
+                  <img src="https://www.svgrepo.com/show/512317/github-142.svg"
+                       alt=""
+                       class="w-5 h-5 mr-3 invert" />
+                  Sign in with GitHub
+                </button>
+            </div>
+
+            <!-- Error Display -->
+            <div id="error-message" class="hidden mt-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl" role="alert" aria-live="polite">
+                <p class="text-red-400 text-sm font-medium" id="error-text"></p>
+            </div>
+        </div>
+
+        <!-- Redirecting View (Shown briefly after successful login) -->
+        <div id="redirecting-view" class="hidden" aria-live="polite">
+            <div class="flex flex-col items-center">
+                <div class="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-6" aria-hidden="true"></div>
+                <img id="user-pic" src="" alt="Your profile picture" class="w-20 h-20 rounded-full border-4 border-blue-600 mb-4 hidden">
+                <h2 class="text-2xl font-bold text-white mb-2">Welcome back, <span id="user-name" class="text-blue-400">Student</span>!</h2>
+                <p class="text-slate-400 text-sm mb-2">Setting up your dashboard...</p>
+                <div class="flex gap-2 mt-4" aria-hidden="true">
+                    <div class="w-2 h-2 bg-blue-500 rounded-full pulse-ring"></div>
+                    <div class="w-2 h-2 bg-blue-500 rounded-full pulse-ring" style="animation-delay: 0.2s"></div>
+                    <div class="w-2 h-2 bg-blue-500 rounded-full pulse-ring" style="animation-delay: 0.4s"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-8 pt-6 border-t border-white/5">
+            <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Protected by SmartStudy AI Security</p>
+        </div>
+    </div>
+
+    <!-- Right Side - Hero Image (Hidden on mobile, visible on large screens) -->
+    <!-- FIXED: Proper image container structure -->
+    <div class="lg:block lg:w-1/2 hero-image-container">
+    <img src="1.jpg" 
+         class="animate-slow-zoom" 
+         alt="Students learning with AI technology" 
+         onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80'">
+    
+    <div class="absolute inset-0 bg-gradient-to-l from-transparent to-[#0f172a]/70 pointer-events-none"></div>
+    
+    <div class="absolute bottom-12 left-12 right-12 text-white z-10">
+        <h3 class="text-2xl font-bold mb-2 text-orange-400">Master Any Subject</h3>
+        <p class="text-slate-200 text-sm opacity-80">Join thousands of students using AI to generate personalized study materials and quizzes.</p>
+    </div>
+</div>
+
+<script type="module">
+import { auth } from "./firebase.js";
+import {
+  GoogleAuthProvider,
+  GithubAuthProvider,
+  signInWithPopup,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+// Constants
+const REDIRECT_DELAY = 1500;
+const ERROR_DISPLAY_TIME = 5000;
+const LOADER_TIMEOUT = 10000;
+const ALLOWED_REDIRECTS = ['dash3.html', 'dashboard.html', 'index.html'];
+
+// DOM elements
+const loggedOutView = document.getElementById("logged-out-view");
+const redirectingView = document.getElementById("redirecting-view");
+const loader = document.getElementById("loader");
+const errorMessage = document.getElementById("error-message");
+const errorText = document.getElementById("error-text");
+const googleBtn = document.getElementById("google-btn");
+const githubBtn = document.getElementById("github-btn");
+
+// State management
+let isAuthenticating = false;
+
+// Loader timeout fallback
+const loaderTimeout = setTimeout(() => {
+  if (!loader.classList.contains('hide-loader')) {
+    console.warn("Loader timeout - forcing hide");
+    loader.classList.add('hide-loader');
+    showError("Loading timeout. Please refresh the page.");
+  }
+}, LOADER_TIMEOUT);
+
+// Show error message
+function showError(message) {
+  errorText.textContent = message;
+  errorMessage.classList.remove("hidden");
+  setTimeout(() => {
+    errorMessage.classList.add("hidden");
+  }, ERROR_DISPLAY_TIME);
+}
+
+// Show redirecting state with user info
+function showRedirecting(user) {
+  loggedOutView.classList.add("hidden");
+  redirectingView.classList.remove("hidden");
+  
+  if (user.displayName) {
+    document.getElementById("user-name").textContent = user.displayName;
+  }
+  
+  if (user.photoURL) {
+    const pic = document.getElementById("user-pic");
+    pic.src = user.photoURL;
+    pic.classList.remove("hidden");
+  }
+}
+
+// FIXED: Safe redirect function with referrer tracking
+function safeRedirect(url) {
+  // Get the page user came from
+  const referrer = document.referrer;
+  const isFromIndexPage = referrer.includes('index.html') || referrer.endsWith('/');
+  
+  // If user came from index page, redirect back to index
+  if (isFromIndexPage && ALLOWED_REDIRECTS.includes('index.html')) {
+    window.location.replace('index.html');
+  } else if (ALLOWED_REDIRECTS.includes(url)) {
+    window.location.replace(url);
+  } else {
+    console.error("Attempted redirect to unauthorized URL:", url);
+    window.location.replace(ALLOWED_REDIRECTS[0]);
+  }
+}
+
+// Set button loading state
+function setButtonLoading(button, isLoading) {
+  if (isLoading) {
+    button.disabled = true;
+    button.classList.add('loading');
+  } else {
+    button.disabled = false;
+    button.classList.remove('loading');
+  }
+}
+
+// Set all buttons loading state
+function setAllButtonsLoading(isLoading) {
+  setButtonLoading(googleBtn, isLoading);
+  setButtonLoading(githubBtn, isLoading);
+}
+
+/* FIXED: Check where user came from to determine redirect destination */
+onAuthStateChanged(
+  auth,
+  (user) => {
+    clearTimeout(loaderTimeout);
+    
+    if (user) {
+      // User already logged in
+      showRedirecting(user);
+      
+      // FIXED: Determine redirect based on referrer
+      const referrer = document.referrer;
+      const isFromIndexPage = referrer.includes('index.html') || referrer.endsWith('/') || !referrer;
+      
+      setTimeout(() => {
+        if (isFromIndexPage) {
+          // Came from index page - go back to index
+          safeRedirect("index.html");
+        } else {
+          // Came from elsewhere - go to dashboard
+          safeRedirect("dash3.html");
+        }
+      }, REDIRECT_DELAY);
+    } else {
+      // Not logged in - show sign in form
+      loader.classList.add("hide-loader");
+      loggedOutView.classList.remove("hidden");
+    }
+  },
+  (error) => {
+    clearTimeout(loaderTimeout);
+    console.error("Auth State Error:", error);
+    loader.classList.add("hide-loader");
+    loggedOutView.classList.remove("hidden");
+    
+    // More specific error handling
+    if (error.code === 'auth/network-request-failed') {
+      showError("Can't connect. Check your internet connection.");
+    } else {
+      showError("Authentication error. Please refresh the page.");
+    }
+  }
+);
+
+/* GOOGLE SIGN IN */
+async function signInWithGoogle() {
+  if (isAuthenticating) return; // Prevent race condition
+  
+  isAuthenticating = true;
+  setAllButtonsLoading(true);
+  
+  try {
+    const provider = new GoogleAuthProvider();
+    const result = await signInWithPopup(auth, provider);
+
+    if (result.user) {
+      showRedirecting(result.user);
+      
+      // FIXED: Check referrer to determine where to redirect
+      const referrer = document.referrer;
+      const isFromIndexPage = referrer.includes('index.html') || referrer.endsWith('/') || !referrer;
+      
+      setTimeout(() => {
+        if (isFromIndexPage) {
+          safeRedirect("index.html");
+        } else {
+          safeRedirect("dash3.html");
+        }
+      }, REDIRECT_DELAY);
+    }
+  } catch (err) {
+    console.error("Google Sign-In Error:", err);
+    
+    // User-friendly error messages
+    if (err.code === 'auth/popup-closed-by-user') {
+      showError("Sign-in canceled. Please try again.");
+    } else if (err.code === 'auth/popup-blocked') {
+      showError("Popup blocked! Please allow popups for this site in your browser settings.");
+    } else if (err.code === 'auth/network-request-failed') {
+      showError("Network error. Please check your internet connection.");
+    } else if (err.code === 'auth/cancelled-popup-request') {
+      // User opened multiple popups - ignore this error silently
+      return;
+    } else if (err.code === 'auth/unauthorized-domain') {
+      showError("This domain is not authorized. Please contact support.");
+    } else {
+      showError("Sign-in failed: " + (err.message || "Unknown error"));
+    }
+  } finally {
+    isAuthenticating = false;
+    setAllButtonsLoading(false);
+  }
+}
+
+/* GITHUB SIGN IN */
+async function signInWithGithub() {
+  if (isAuthenticating) return; // Prevent race condition
+  
+  isAuthenticating = true;
+  setAllButtonsLoading(true);
+  
+  try {
+    const provider = new GithubAuthProvider();
+    const result = await signInWithPopup(auth, provider);
+    
+    if (result.user) {
+      showRedirecting(result.user);
+      
+      // FIXED: Check referrer to determine where to redirect
+      const referrer = document.referrer;
+      const isFromIndexPage = referrer.includes('index.html') || referrer.endsWith('/') || !referrer;
+      
+      setTimeout(() => {
+        if (isFromIndexPage) {
+          safeRedirect("index.html");
+        } else {
+          safeRedirect("dash3.html");
+        }
+      }, REDIRECT_DELAY);
+    }
+  } catch (err) {
+    console.error("GitHub Sign-In Error:", err);
+    
+    // GitHub-specific error messages
+    if (err.code === 'auth/popup-closed-by-user') {
+      showError("Sign-in canceled. Please try again.");
+    } else if (err.code === 'auth/popup-blocked') {
+      showError("Popup blocked! Please allow popups for this site in your browser settings.");
+    } else if (err.code === 'auth/account-exists-with-different-credential') {
+      showError("An account already exists with this email using a different sign-in method. Try Google instead.");
+    } else if (err.code === 'auth/network-request-failed') {
+      showError("Network error. Please check your internet connection.");
+    } else if (err.code === 'auth/cancelled-popup-request') {
+      // User opened multiple popups - ignore this error silently
+      return;
+    } else if (err.code === 'auth/unauthorized-domain') {
+      showError("This domain is not authorized. Please contact support.");
+    } else {
+      showError("GitHub sign-in failed: " + (err.message || "Unknown error"));
+    }
+  } finally {
+    isAuthenticating = false;
+    setAllButtonsLoading(false);
+  }
+}
+
+// Event listeners (better than inline onclick)
+googleBtn.addEventListener('click', signInWithGoogle);
+githubBtn.addEventListener('click', signInWithGithub);
+
+// Keyboard accessibility
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && document.activeElement.tagName !== 'BUTTON') {
+    if (!googleBtn.disabled && !isAuthenticating) {
+      googleBtn.click();
+    }
+  }
+});
+
+// FIXED: Image error handling with better fallback
+const heroImage = document.querySelector('.hero-image-container img');
+if (heroImage) {
+  heroImage.addEventListener('error', function() {
+    console.warn('Primary image (1.jpg) failed to load, using fallback');
+    // Fallback already handled by onerror attribute
+  });
+  
+  // Check if image loaded successfully
+  heroImage.addEventListener('load', function() {
+    console.log('Hero image loaded successfully');
+  });
+}
+
+console.log('✨ SmartStudy AI Sign-In Page - Fully Debugged Version');
+</script>
+</body>
+</html>

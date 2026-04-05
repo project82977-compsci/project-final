@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduGenius AI | Premium Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script>tailwind.config = { darkMode: 'class' }</script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; transition: background 0.4s ease; }
+        .theme-switch { position: relative; width: 64px; height: 32px; background: #e2e8f0; border-radius: 20px; cursor: pointer; display: flex; align-items: center; padding: 0 4px; transition: 0.4s; }
+        .dark .theme-switch { background: #334155; }
+        .switch-circle { width: 24px; height: 24px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
+        .dark .switch-circle { transform: translateX(32px); background: #1e293b; }
+        .theme-switch .fa-sun { color: #f59e0b; font-size: 12px; }
+        .theme-switch .fa-moon { display: none; color: #facc15; font-size: 12px; }
+        .dark .theme-switch .fa-sun { display: none; }
+        .dark .theme-switch .fa-moon { display: block; }
+        .voice-bar { width: 3px; height: 8px; background: #ef4444; border-radius: 10px; animation: bounce 0.5s ease-in-out infinite alternate; }
+        .voice-bar:nth-child(2) { animation-delay: 0.1s; }
+        .voice-bar:nth-child(3) { animation-delay: 0.2s; }
+        .voice-bar:nth-child(4) { animation-delay: 0.3s; }
+        @keyframes bounce { from { height: 4px; } to { height: 16px; } }
+        .animate-pop { animation: pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+        @keyframes pop { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .chat-bubble { max-width: 85%; word-wrap: break-word; }
+        .glass-pill { background: rgba(241, 245, 249, 0.9); backdrop-filter: blur(10px); }
+        .dark .glass-pill { background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(255,255,255,0.1); }
+        .thinking-dots { display: flex; gap: 4px; padding: 4px 8px; }
+        .dot { width: 8px; height: 8px; background: #6366f1; border-radius: 50%; animation: bounceDots 1.4s infinite ease-in-out both; }
+        .dot:nth-child(1) { animation-delay: -0.32s; }
+        .dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounceDots { 0%, 80%, 100% { transform: scale(0.3); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
+        .stop-btn { display: flex; align-items: center; gap: 6px; margin-top: 8px; padding: 6px 12px; border-radius: 8px; font-size: 11px; font-weight: 700; color: #ef4444; background: #fef2f2; border: 1px solid #fee2e2; cursor: pointer; transition: all 0.2s; width: fit-content; }
+        .stop-btn:hover { background: #fee2e2; transform: scale(1.02); }
+        .dark .stop-btn { background: rgba(127,29,29,0.2); border-color: #7f1d1d; color: #fca5a5; }
+        #loader { position: fixed; inset: 0; background: #ffffff; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; }
+        #loader img { width: 120px; height: auto; }
+        #loader h2 { margin-top: 15px; font-size: 22px; color: #0f172a; }
+        #loader p { margin-top: 5px; font-size: 14px; color: #475569; }
+        .hide-loader { opacity: 0; transition: opacity 0.6s ease; pointer-events: none; }
+        pre { background: #1e293b; padding: 16px; border-radius: 12px; overflow-x: auto; margin: 12px 0; }
+        code { font-family: 'Monaco', 'Courier New', monospace; font-size: 13px; color: #e2e8f0; }
+        .model-btn { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; font-size: 11px; font-weight: 700; border: 2px solid transparent; cursor: pointer; transition: all 0.2s; width: 100%; text-align: left; background: transparent; }
+        .model-btn.active { border-color: #6366f1; background: rgba(99,102,241,0.1); color: #6366f1; }
+        .model-btn:not(.active) { color: #64748b; }
+        .dark .model-btn:not(.active) { color: #94a3b8; }
+        .model-btn:hover:not(.active) { border-color: #6366f1; color: #6366f1; background: rgba(99,102,241,0.05); }
+        .model-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        #plus-menu { max-height: 420px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #6366f1 transparent; }
+        #plus-menu::-webkit-scrollbar { width: 4px; }
+        #plus-menu::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 4px; }
+        .plus-model-dot { width: 8px; height: 8px; border-radius: 50%; position: absolute; bottom: 9px; right: 9px; border: 1.5px solid white; }
+        .dark .plus-model-dot { border-color: #1e293b; }
+        .model-tag { font-size: 9px; font-weight: 800; padding: 1px 7px; border-radius: 999px; background: rgba(99,102,241,0.12); color: #818cf8; border: 1px solid rgba(99,102,241,0.2); letter-spacing: 0.05em; display: inline-block; margin-bottom: 4px; }
+        .gen-image-wrap { margin-top: 8px; border-radius: 16px; overflow: hidden; max-width: 400px; position: relative; }
+        .gen-image-wrap img { width: 100%; display: block; border-radius: 16px; }
+        .img-actions { display: flex; gap: 8px; margin-top: 8px; }
+        .img-action-btn { padding: 5px 12px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; border: none; transition: all 0.2s; text-decoration: none; display: inline-block; }
+        #imggen-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 999; display: flex; align-items: center; justify-content: center; }
+        #imggen-modal.hidden { display: none; }
+        .imggen-box { background: white; border-radius: 24px; padding: 28px; width: 90%; max-width: 480px; box-shadow: 0 25px 60px rgba(0,0,0,0.3); }
+        .dark .imggen-box { background: #1e293b; }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-[#0f172a] h-screen flex overflow-hidden">
+    <div id="loader">
+      <img src="online-class.gif" alt="Smart Study Loading" onerror="this.style.display='none'">
+      <h2>Smart Study with AI</h2>
+      <p>Loading your study space...</p>
+    </div>
+
+    <!-- IMAGE GENERATION MODAL -->
+    <div id="imggen-modal" class="hidden">
+        <div class="imggen-box">
+            <div class="flex items-center justify-between mb-5">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-violet-600 flex items-center justify-center text-white">
+                        <i class="fas fa-image text-sm"></i>
+                    </div>
+                    <div>
+                        <p class="font-black text-sm dark:text-white">Generate Image</p>
+                        <p class="text-[10px] text-slate-400">Powered by Cloudflare AI</p>
+                    </div>
+                </div>
+                <button onclick="closeImgGen()" class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-red-500 rounded-full hover:bg-red-50 transition-all">
+                    <i class="fas fa-times text-sm"></i>
+                </button>
+            </div>
+
+            <textarea id="imggen-prompt" rows="3" placeholder="Describe the image you want... e.g. 'a futuristic classroom with holograms, photorealistic'"
+                class="w-full p-4 rounded-2xl border dark:border-slate-700 bg-slate-50 dark:bg-slate-800 dark:text-white text-sm outline-none resize-none focus:border-violet-400 transition-all"></textarea>
+
+            <!-- Style presets -->
+            <div class="flex gap-2 flex-wrap mt-3 mb-4">
+                <button onclick="addStyle('photorealistic')" class="px-3 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg text-[10px] font-bold hover:bg-blue-100 transition-all">📷 Realistic</button>
+                <button onclick="addStyle('anime style')" class="px-3 py-1 bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400 rounded-lg text-[10px] font-bold hover:bg-pink-100 transition-all">🎌 Anime</button>
+                <button onclick="addStyle('digital art')" class="px-3 py-1 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-lg text-[10px] font-bold hover:bg-purple-100 transition-all">🎨 Digital Art</button>
+                <button onclick="addStyle('pencil sketch')" class="px-3 py-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-[10px] font-bold hover:bg-slate-200 transition-all">✏️ Sketch</button>
+                <button onclick="addStyle('3D render')" class="px-3 py-1 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-lg text-[10px] font-bold hover:bg-green-100 transition-all">🧊 3D</button>
+                <button onclick="addStyle('watercolor painting')" class="px-3 py-1 bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400 rounded-lg text-[10px] font-bold hover:bg-cyan-100 transition-all">🖌️ Watercolor</button>
+            </div>
+
+            <!-- Size selector -->
+            <div class="flex gap-2 mb-4">
+                <p class="text-[10px] font-bold text-slate-400 uppercase self-center mr-1">Size:</p>
+                <button onclick="setImgSize(512,512)" id="size-square" class="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-lg text-[10px] font-bold border-2 border-indigo-400 transition-all">Square</button>
+                <button onclick="setImgSize(768,512)" id="size-landscape" class="px-3 py-1.5 bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-lg text-[10px] font-bold border-2 border-transparent transition-all">Landscape</button>
+                <button onclick="setImgSize(512,768)" id="size-portrait" class="px-3 py-1.5 bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-lg text-[10px] font-bold border-2 border-transparent transition-all">Portrait</button>
+            </div>
+
+            <button onclick="generateImage()" id="imggen-btn"
+                class="w-full py-3.5 bg-gradient-to-r from-pink-500 to-violet-600 text-white rounded-2xl font-black text-sm hover:opacity-90 transition-all shadow-lg">
+                <i class="fas fa-magic mr-2"></i> Generate Image
+            </button>
+        </div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <aside class="w-72 h-full bg-white dark:bg-[#1e293b] border-r dark:border-slate-800 flex flex-col p-6 z-50">
+        <div class="flex items-center gap-3 mb-8">
+            <div class="bg-indigo-600 p-2 rounded-xl text-white shadow-lg"><i class="fas fa-brain"></i></div>
+            <span class="font-bold text-xl dark:text-white">EduGenius</span>
+        </div>
+        <button onclick="window.location.href='dash3.html'" class="w-full py-3 mb-4 flex items-center justify-center gap-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-all">
+            <i class="fas fa-arrow-left text-sm"></i>
+            <span class="text-sm font-semibold">Back to Dashboard</span>
+        </button>
+        <button id="new-chat-btn" class="w-full py-3.5 bg-indigo-600 text-white rounded-2xl text-sm font-bold shadow-md hover:bg-indigo-700 transition-all mb-8">
+            <i class="fas fa-plus mr-2"></i> New Chat
+        </button>
+        <div class="flex-1 overflow-y-auto">
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Chat History</p>
+            <div id="history-list" class="space-y-2"></div>
+        </div>
+        <div class="pt-6 border-t dark:border-slate-800 space-y-4">
+            <button id="export-pdf" class="w-full flex items-center gap-3 px-2 py-1 text-sm text-slate-600 dark:text-slate-300 hover:text-indigo-600 transition-all">
+                <i class="fas fa-file-pdf text-red-500"></i> Export Session PDF
+            </button>
+            <div class="flex items-center justify-between px-2">
+                <span class="text-xs font-bold dark:text-slate-400 uppercase">Theme</span>
+                <div class="theme-switch" id="theme-toggle">
+                    <div class="switch-circle"><i class="fas fa-sun"></i><i class="fas fa-moon"></i></div>
+                </div>
+            </div>
+            <div class="h-px bg-slate-100 dark:bg-slate-800 my-2"></div>
+            <div class="space-y-3 px-2">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-[10px] font-bold uppercase text-slate-500">Privacy Mode</p>
+                        <p class="text-[9px] text-slate-400">No AI training</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="privacy-toggle" class="sr-only peer" checked>
+                        <div class="w-7 h-3.5 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:bg-indigo-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-2.5 after:w-2.5 after:transition-all"></div>
+                    </label>
+                </div>
+                <button onclick="clearAllData()" class="w-full text-left text-[11px] text-slate-500 hover:text-red-600 transition-all">
+                    <i class="fas fa-trash-alt mr-2"></i> Clear All History
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- MAIN CHAT -->
+    <main class="flex-1 flex flex-col relative bg-white dark:bg-[#0f172a]">
+        <div id="chat-container" class="flex-1 overflow-y-auto p-6 md:px-20 py-10 space-y-4 scroll-smooth"></div>
+
+        <!-- FILE / VOICE CARDS -->
+        <div class="absolute bottom-28 left-1/2 -translate-x-1/2 w-full max-w-md px-6 z-40">
+            <div id="file-status-card" class="hidden bg-white dark:bg-slate-800 p-3 rounded-2xl shadow-2xl border dark:border-slate-700 animate-pop mb-2">
+                <div id="file-card-content" class="w-full">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-3 flex-1 overflow-hidden">
+                            <div class="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center text-indigo-600"><i class="fas fa-file-alt"></i></div>
+                            <div class="overflow-hidden flex-1">
+                                <p id="preview-file-name" class="text-xs font-bold dark:text-white truncate">document.pdf</p>
+                                <p id="file-status-text" class="text-[10px] text-green-500 font-medium">Ready to analyze</p>
+                            </div>
+                        </div>
+                        <button id="clear-file" class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-red-500 shrink-0"><i class="fas fa-times"></i></button>
+                    </div>
+                    <div id="quick-actions" class="hidden flex gap-2 flex-wrap">
+                        <button onclick="quickAction('summarize')" class="px-3 py-1.5 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-lg text-[10px] font-bold hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-all"><i class="fas fa-compress-alt mr-1"></i> Summarize</button>
+                        <button onclick="quickAction('flashcards')" class="px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg text-[10px] font-bold hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-all"><i class="fas fa-brain mr-1"></i> Flashcards</button>
+                        <button onclick="quickAction('quiz')" class="px-3 py-1.5 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-lg text-[10px] font-bold hover:bg-green-100 dark:hover:bg-green-900/30 transition-all"><i class="fas fa-question-circle mr-1"></i> Quiz</button>
+                        <button onclick="quickAction('explain')" class="px-3 py-1.5 bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 rounded-lg text-[10px] font-bold hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-all"><i class="fas fa-lightbulb mr-1"></i> Explain</button>
+                        <button onclick="quickAction('keypoints')" class="px-3 py-1.5 bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400 rounded-lg text-[10px] font-bold hover:bg-pink-100 dark:hover:bg-pink-900/30 transition-all"><i class="fas fa-list mr-1"></i> Key Points</button>
+                    </div>
+                </div>
+            </div>
+            <div id="voice-card" class="hidden bg-red-50 dark:bg-red-900/20 p-4 rounded-2xl shadow-xl border border-red-100 dark:border-red-900/30 flex items-center justify-between animate-pop">
+                <div class="flex items-center gap-4">
+                    <div class="flex gap-1 items-end h-4"><div class="voice-bar"></div><div class="voice-bar"></div><div class="voice-bar"></div><div class="voice-bar"></div></div>
+                    <span class="text-sm font-bold text-red-600 dark:text-red-400 animate-pulse">Listening...</span>
+                </div>
+                <button onclick="stopVoice()" class="text-xs font-bold text-red-600 dark:text-red-400 underline uppercase">Stop</button>
+            </div>
+        </div>
+
+        <!-- INPUT BAR -->
+        <div class="p-6">
+            <div class="max-w-4xl mx-auto relative">
+                <div id="plus-menu" class="hidden absolute bottom-20 left-0 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-2xl shadow-2xl p-3 w-72 z-50 animate-pop">
+                    <div class="space-y-1">
+                        <button onclick="document.getElementById('file-input').click()" class="w-full flex items-center gap-4 p-3 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition-all">
+                            <div class="w-8 h-8 flex items-center justify-center text-blue-500 bg-blue-50 dark:bg-blue-900/30 rounded-lg"><i class="fas fa-file-upload"></i></div>
+                            <div class="text-left"><p class="font-bold text-sm dark:text-white">Upload File</p><p class="text-[11px] text-slate-400">Images, PDF, PPTX, Code, Text</p></div>
+                        </button>
+                        <button onclick="openImgGen()" class="w-full flex items-center gap-4 p-3 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition-all">
+                            <div class="w-8 h-8 flex items-center justify-center text-pink-500 bg-pink-50 dark:bg-pink-900/30 rounded-lg"><i class="fas fa-magic"></i></div>
+                            <div class="text-left"><p class="font-bold text-sm dark:text-white">Generate Image</p><p class="text-[11px] text-slate-400">AI image from your description</p></div>
+                        </button>
+                    </div>
+                    <div class="h-px bg-slate-100 dark:bg-slate-700 my-2"></div>
+                    <div id="math-summarize-section" class="space-y-1"></div>
+                    <div class="h-px bg-slate-100 dark:bg-slate-700 my-2"></div>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-3 mb-2">Coding</p>
+                    <div id="plus-templates" class="space-y-1"></div>
+                    <div class="h-px bg-slate-100 dark:bg-slate-700 my-2"></div>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-3 mb-2">AI Model</p>
+                    <div id="model-list" class="space-y-1"></div>
+                </div>
+
+                <div class="glass-pill rounded-[2.5rem] p-2 flex items-end shadow-lg">
+                    <div class="relative shrink-0">
+                        <button id="plus-btn" class="w-12 h-12 flex items-center justify-center text-slate-500 hover:bg-white dark:hover:bg-slate-700 rounded-full transition-all">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        <span id="plus-model-dot" class="plus-model-dot" style="background:#f97316"></span>
+                    </div>
+                    <textarea id="chat-input" rows="1" placeholder="Ask anything..." class="flex-1 bg-transparent border-none outline-none p-3.5 dark:text-white resize-none max-h-48"></textarea>
+                    <div class="flex items-center gap-1 pr-2 pb-1 shrink-0">
+                        <button id="voice-btn" class="w-12 h-12 flex items-center justify-center text-slate-500 hover:bg-white dark:hover:bg-slate-700 rounded-full transition-all"><i class="fas fa-microphone text-lg"></i></button>
+                        <button id="send-btn" class="w-12 h-12 flex items-center justify-center bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition-all shadow-md"><i class="fas fa-paper-plane text-sm"></i></button>
+                    </div>
+                </div>
+                <input type="file" id="file-input" class="hidden" accept="image/*,application/pdf,text/*,.txt,.md,.js,.ts,.py,.html,.css,.json,.csv,.xml,.yaml,.yml,.pptx,.ppt">
+            </div>
+        </div>
+    </main>
+
+<script type="module">
+import { auth } from "./firebase.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { CLOUDFLARE_API_URL } from "./firebase.js";
+
+const MODELS = {
+    gemma12:  { id: "google/gemma-3-12b-it:free",                       label: "Gemma 12B",     desc: "Reliable & stable",      dot: "bg-emerald-400", hex: "#10b981" },
+    nvidia:   { id: "nvidia/nemotron-nano-12b-2-vl:free",               label: "nvidia",        desc: "for images and videos",  dot: "bg-pink-400",    hex: "#be185d" },
+    mistral:  { id: "mistralai/mistral-small-3.1-24b:free",             label: "Mistral Small", desc: "24B - multimodal",        dot: "bg-orange-400",  hex: "#fb923c" },
+    liquid:   { id: "liquid/lfm-2.5-1.2b-instruct:free",                label: "Liquid LFM",    desc: "Fast on-device",         dot: "bg-blue-400",    hex: "#60a5fa" },
+    gemma27:  { id: "google/gemma-3-27b-it:free",                       label: "Gemma 27B",     desc: "Google flagship",        dot: "bg-green-400",   hex: "#22c55e" },
+    stepfun:  { id: "stepfun/step-3.5-flash:free",                      label: "Step Flash",    desc: "Fast reasoning",         dot: "bg-purple-400",  hex: "#c084fc" },
+    trinity:  { id: "arcee-ai/trinity-mini:free",              label: "Trinity Large", desc: "400B MoE - creative",    dot: "bg-pink-400",    hex: "#f472b6" },
+    qwen80:   { id: "qwen/qwen3-next-80b-a3b:free",                     label: "Qwen 80B",      desc: "Stable chat",            dot: "bg-cyan-400",    hex: "#22d3ee" },
+    glm:      { id: "z-ai/glm-4.5-air:free",                            label: "GLM Air",       desc: "Agent-friendly",         dot: "bg-violet-400",  hex: "#8b5cf6" },
+    qwen480:  { id: "qwen/qwen3-coder-480b-a35b:free",                  label: "Qwen Coder",    desc: "480B - best for code",   dot: "bg-teal-400",    hex: "#2dd4bf" },
+    deepseek: { id: "deepseek/deepseek-r1-0528:free",                   label: "DeepSeek R1",   desc: "o1-level reasoning",     dot: "bg-red-400",     hex: "#f87171" },
+    llama33:  { id: "meta-llama/llama-3.3-70b-instruct:free",           label: "Llama 3.3",     desc: "70B - popular",          dot: "bg-amber-400",   hex: "#fbbf24" },
+    llama32:  { id: "meta-llama/llama-3.2-3b-instruct:free",            label: "Llama 3.2",     desc: "3B - lightweight",       dot: "bg-yellow-400",  hex: "#facc15" },
+    gpt120:   { id: "openai/gpt-oss-120b:free",                         label: "GPT OSS 120B",  desc: "High reasoning",         dot: "bg-green-500",   hex: "#22c55e" },
+    hermes:   { id: "nousresearch/hermes-3-405b-instruct:free",         label: "Hermes 405B",   desc: "Massive creative",       dot: "bg-purple-400",  hex: "#c084fc" },
+    minimax:  { id: "minimax/minimax-m2.5:free",                        label: "MiniMax M2.5",  desc: "197K context",           dot: "bg-rose-400",    hex: "#fb7185" }
+};
+
+let activeModel = localStorage.getItem('edu_model') || 'gemma12';
+
+// ============================================================
+// AI TEXT CALL WITH FALLBACK
+// ============================================================
+async function callAI(messages, modelKey, signal = null) {
+    const modelKeys = Object.keys(MODELS);
+    const startIndex = modelKeys.indexOf(modelKey);
+    const fallbackChain = [...modelKeys.slice(startIndex), ...modelKeys.slice(0, startIndex)];
+    let lastError = null;
+    let attemptCount = 0;
+    for (const key of fallbackChain) {
+        const model = MODELS[key];
+        attemptCount++;
+        try {
+            const opts = {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messages, model: model.id })
+            };
+            if (signal) opts.signal = signal;
+            const res = await fetch(`${CLOUDFLARE_API_URL}/chat`, opts);
+            const data = await res.json();
+            if (res.status === 429 || res.status === 400 || res.status === 404) { lastError = data; continue; }
+            if (!res.ok) throw new Error(`Worker ${res.status}: ${JSON.stringify(data)}`);
+            return data.reply || data.choices?.[0]?.message?.content || 'No response.';
+        } catch (err) {
+            if (err.name === 'AbortError') throw err;
+            lastError = err;
+        }
+    }
+    throw new Error(`All models unavailable. Last error: ${lastError?.message || JSON.stringify(lastError)}`);
+}
+
+// ============================================================
+// AI IMAGE VISION (analyze uploaded image)
+// ============================================================
+async function callImageAI(imageData, prompt, signal = null) {
+    const VISION_MODELS = ['nvidia', 'mistral', 'gemma27', 'gemma12'];
+    let lastError = null;
+    for (const key of VISION_MODELS) {
+        const model = MODELS[key];
+        try {
+            const base64 = imageData.startsWith('data:') ? imageData : `data:image/jpeg;base64,${imageData}`;
+            const messages = [{
+                role: "user",
+                content: [
+                    { type: "image_url", image_url: { url: base64 } },
+                    { type: "text", text: prompt || "Describe and analyze this image in detail." }
+                ]
+            }];
+            const opts = {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messages, model: model.id })
+            };
+            if (signal) opts.signal = signal;
+            const res = await fetch(`${CLOUDFLARE_API_URL}/chat`, opts);
+            const data = await res.json();
+            if ([400, 404, 429].includes(res.status)) { lastError = data; continue; }
+            if (!res.ok) throw new Error(`${res.status}: ${JSON.stringify(data)}`);
+            return data.reply || data.choices?.[0]?.message?.content || 'Could not analyze image.';
+        } catch (err) {
+            if (err.name === 'AbortError') throw err;
+            lastError = err;
+        }
+    }
+    throw new Error(`Vision failed: ${lastError?.message || JSON.stringify(lastError)}`);
+}
+
+// ============================================================
+// IMAGE GENERATION — Cloudflare Workers AI
+// ============================================================
+let imgGenWidth = 512, imgGenHeight = 512;
+
+window.openImgGen = () => {
+    document.getElementById('imggen-modal').classList.remove('hidden');
+    document.getElementById('imggen-prompt').focus();
+    plusMenu.classList.add('hidden');
+};
+window.closeImgGen = () => {
+    document.getElementById('imggen-modal').classList.add('hidden');
+};
+window.addStyle = (style) => {
+    const ta = document.getElementById('imggen-prompt');
+    if (!ta.value.includes(style)) ta.value += (ta.value ? ', ' : '') + style;
+    ta.focus();
+};
+window.setImgSize = (w, h) => {
+    imgGenWidth = w; imgGenHeight = h;
+    ['square','landscape','portrait'].forEach(id => {
+        const btn = document.getElementById(`size-${id}`);
+        btn.classList.remove('border-indigo-400','bg-indigo-50','text-indigo-600');
+        btn.classList.add('border-transparent','bg-slate-50','text-slate-500');
+    });
+    const activeId = w > h ? 'landscape' : h > w ? 'portrait' : 'square';
+    const activeBtn = document.getElementById(`size-${activeId}`);
+    activeBtn.classList.remove('border-transparent','bg-slate-50','text-slate-500');
+    activeBtn.classList.add('border-indigo-400','bg-indigo-50','text-indigo-600');
+};
+
+window.generateImage = async () => {
+    const prompt = document.getElementById('imggen-prompt').value.trim();
+    if (!prompt) { alert('Please describe the image you want!'); return; }
+
+    const btn = document.getElementById('imggen-btn');
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Generating... (this takes ~20s)';
+    btn.disabled = true;
+    closeImgGen();
+
+    // Show loading bubble
+    const loadDiv = document.createElement('div');
+    loadDiv.className = "flex gap-4 animate-pop mb-4";
+    loadDiv.innerHTML = `
+        <div class="w-10 h-10 rounded-xl shrink-0 flex items-center justify-center bg-gradient-to-br from-pink-500 to-violet-600 text-white shadow-lg">
+            <i class="fas fa-magic text-sm"></i>
+        </div>
+        <div>
+            <div class="model-tag mb-1">🎨 Stable Diffusion XL</div>
+            <div class="bg-slate-100 dark:bg-slate-800 p-4 rounded-2xl rounded-tl-none shadow-sm text-sm text-slate-500 dark:text-slate-400">
+                <i class="fas fa-spinner fa-spin mr-2 text-violet-500"></i> Creating "<em>${prompt.substring(0,50)}${prompt.length>50?'...':''}</em>"
+            </div>
+        </div>`;
+    container.appendChild(loadDiv);
+    addBubble(`🎨 Generate image: ${prompt}`, false);
+    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+
+    try {
+        // Call your Cloudflare Worker /generate-image endpoint
+        const res = await fetch(`${CLOUDFLARE_API_URL}/generate-image`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt, width: imgGenWidth, height: imgGenHeight })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error || `Worker error ${res.status}`);
+        if (!data.image) throw new Error('No image returned from Worker');
+
+        if (container.contains(loadDiv)) container.removeChild(loadDiv);
+
+        // Show image in chat
+        const imgDiv = document.createElement('div');
+        imgDiv.className = "flex gap-4 animate-pop mb-4";
+        imgDiv.innerHTML = `
+            <div class="w-10 h-10 rounded-xl shrink-0 flex items-center justify-center bg-gradient-to-br from-pink-500 to-violet-600 text-white shadow-lg">
+                <i class="fas fa-magic text-sm"></i>
+            </div>
+            <div class="chat-bubble">
+                <div class="model-tag mb-2">🎨 Stable Diffusion XL</div>
+                <div class="gen-image-wrap">
+                    <img src="${data.image}" alt="${prompt}" style="max-width:400px;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.15);" />
+                    <div class="img-actions">
+                        <a href="${data.image}" download="edugenius-image.png"
+                            class="img-action-btn bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100">
+                            <i class="fas fa-download mr-1"></i> Download
+                        </a>
+                        <button onclick="window._lastImgPrompt && generateImageFromPrompt(window._lastImgPrompt)"
+                            class="img-action-btn bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 hover:bg-violet-100">
+                            <i class="fas fa-redo mr-1"></i> Regenerate
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+        container.appendChild(imgDiv);
+        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+
+        // Save prompt for regenerate
+        window._lastImgPrompt = prompt;
+        window._lastImgWidth  = imgGenWidth;
+        window._lastImgHeight = imgGenHeight;
+
+        messages.push({ text: `[Generated image: ${prompt}]`, isAI: true, modelKey: null });
+        saveToHistory();
+        confetti({ particleCount: 60, origin: { y: 0.7 }, colors: ['#f472b6','#8b5cf6','#6366f1'] });
+
+    } catch (err) {
+        if (container.contains(loadDiv)) container.removeChild(loadDiv);
+        addBubble(`⚠️ Image generation failed: ${err.message}`, true, true, null);
+        console.error('❌ Image gen error:', err);
+    } finally {
+        btn.innerHTML = '<i class="fas fa-magic mr-2"></i> Generate Image';
+        btn.disabled = false;
+        document.getElementById('imggen-prompt').value = '';
+    }
+};
+
+// Regenerate using last prompt
+window.generateImageFromPrompt = async (prompt) => {
+    document.getElementById('imggen-prompt').value = prompt;
+    imgGenWidth  = window._lastImgWidth  || 512;
+    imgGenHeight = window._lastImgHeight || 512;
+    await window.generateImage();
+};
+
+// Close modal on backdrop click
+document.getElementById('imggen-modal').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('imggen-modal')) closeImgGen();
+});
+
+// ============================================================
+// STATE
+// ============================================================
+let chats = JSON.parse(localStorage.getItem('edu_v5')) || [];
+let currentId = Date.now();
+let messages = [];
+let activeFile = null;
+let currentAbortController = null;
+let recognition = null;
+let currentUser = null;
+let isGenerating = false;
+
+const container   = document.getElementById('chat-container');
+const input       = document.getElementById('chat-input');
+const historyList = document.getElementById('history-list');
+const fileCard    = document.getElementById('file-status-card');
+const voiceCard   = document.getElementById('voice-card');
+const plusMenu    = document.getElementById('plus-menu');
+const sendBtn     = document.getElementById('send-btn');
+
+// ============================================================
+// AUTH
+// ============================================================
+onAuthStateChanged(auth, (user) => {
+    if (!user) { window.location.href = "signin.html"; return; }
+    currentUser = user;
+    setTimeout(() => document.getElementById('loader')?.classList.add('hide-loader'), 800);
+});
+
+// ============================================================
+// MODEL SELECTOR
+// ============================================================
+function renderModelSelector() {
+    document.getElementById('model-list').innerHTML = Object.entries(MODELS).map(([key, m]) => `
+        <button onclick="selectModel('${key}')" id="model-btn-${key}"
+            class="model-btn ${key === activeModel ? 'active' : ''}">
+            <span class="model-dot ${m.dot}"></span>
+            <div class="flex-1 text-left">
+                <div class="font-black text-xs">${m.label}</div>
+                <div class="text-[10px] opacity-60 font-medium">${m.desc}</div>
+            </div>
+            ${key === activeModel ? '<i class="fas fa-check text-indigo-500 text-[10px] ml-auto"></i>' : ''}
+        </button>`).join('');
+    document.getElementById('plus-model-dot').style.background = MODELS[activeModel].hex;
+}
+
+window.selectModel = (key) => {
+    activeModel = key;
+    localStorage.setItem('edu_model', key);
+    renderModelSelector();
+};
+
+// ============================================================
+// HANDLE SEND
+// ============================================================
+async function handleSend() {
+    const p = input.value.trim();
+    if ((!p && !activeFile) || isGenerating) return;
+
+    isGenerating = true;
+    currentAbortController = new AbortController();
+
+    sendBtn.innerHTML = '<i class="fas fa-stop text-sm"></i>';
+    sendBtn.classList.replace('bg-indigo-600','bg-red-500');
+    sendBtn.classList.replace('hover:bg-indigo-700','hover:bg-red-600');
+    sendBtn.onclick = stopAI;
+
+    const tempFile = activeFile;
+    addBubble(p ? `${tempFile ? `📎 ${tempFile.name}\n` : ''}${p}` : (tempFile ? `📎 ${tempFile.name}` : "..."), false);
+    input.value = '';
+    input.style.height = 'auto';
+    plusMenu.classList.add('hidden');
+    activeFile = null;
+    fileCard.classList.add('hidden');
+
+    const loadingBubble = document.createElement('div');
+    loadingBubble.id = 'loading-bubble';
+    loadingBubble.className = "flex gap-4 animate-pop mb-4";
+    loadingBubble.innerHTML = `
+        <div class="w-10 h-10 rounded-xl shrink-0 flex items-center justify-center bg-indigo-600 text-white shadow-lg">
+            <i class="fas fa-sparkles text-sm"></i>
+        </div>
+        <div>
+            <div class="text-[10px] font-bold text-slate-400 mb-1 model-tag">${MODELS[activeModel].label}</div>
+            <div class="bg-slate-100 dark:bg-slate-800 p-4 rounded-2xl rounded-tl-none flex items-center shadow-sm">
+                <div class="thinking-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+            </div>
+            <button class="stop-btn" onclick="stopAI()"><i class="fas fa-stop-circle"></i> Stop generating</button>
+        </div>`;
+    container.appendChild(loadingBubble);
+    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+
+    try {
+        let aiMsg;
+        if (tempFile && tempFile.type === 'image') {
+            aiMsg = await callImageAI(tempFile.data, p || "Analyze this image in detail.", currentAbortController.signal);
+        } else if (tempFile && tempFile.type === 'text') {
+            const fileContext = `File: "${tempFile.name}"\n\n---\n${tempFile.content}\n---\n\n`;
+            const userMsg = p ? `${fileContext}${p}` : `${fileContext}Please summarize and explain this document.`;
+            aiMsg = await callAI([{ role: "user", content: userMsg }], activeModel, currentAbortController.signal);
+        } else {
+            aiMsg = await callAI([{ role: "user", content: p }], activeModel, currentAbortController.signal);
+        }
+        if (container.contains(loadingBubble)) container.removeChild(loadingBubble);
+        addBubble(aiMsg, true, true, (tempFile?.type === 'image') ? 'nvidia' : activeModel);
+    } catch (err) {
+        if (container.contains(loadingBubble)) container.removeChild(loadingBubble);
+        if (err.name === 'AbortError') {
+            addBubble("✋ Generation stopped.", true, true, activeModel);
+        } else {
+            addBubble(`⚠️ Error: ${err.message}`, true, true, activeModel);
+        }
+    } finally {
+        isGenerating = false;
+        currentAbortController = null;
+        sendBtn.innerHTML = '<i class="fas fa-paper-plane text-sm"></i>';
+        sendBtn.classList.replace('bg-red-500','bg-indigo-600');
+        sendBtn.classList.replace('hover:bg-red-600','hover:bg-indigo-700');
+        sendBtn.onclick = handleSend;
+    }
+}
+
+window.stopAI = () => {
+    if (currentAbortController) { currentAbortController.abort(); }
+};
+
+// ============================================================
+// TEMPLATES
+// ============================================================
+const TOOLS = {
+    smart: [
+        { label: "Math Helper",   icon: "fa-square-root-alt", color: "text-orange-500", bg: "bg-orange-50", snippet: "Help me solve this math problem: " },
+        { label: "Summarize",     icon: "fa-compress-alt",    color: "text-purple-500", bg: "bg-purple-50", snippet: "Summarize the following: " },
+        { label: "Explain",       icon: "fa-lightbulb",       color: "text-yellow-500", bg: "bg-yellow-50", snippet: "Explain this concept: " }
+    ],
+    coding: [
+        { label: "JS Function",   icon: "fa-js",     color: "text-yellow-500", bg: "bg-yellow-50", snippet: "Write a JavaScript function that: " },
+        { label: "Python Script", icon: "fa-python", color: "text-blue-500",   bg: "bg-blue-50",   snippet: "Write a Python script that: " },
+        { label: "Debug Code",    icon: "fa-bug",    color: "text-red-500",    bg: "bg-red-50",    snippet: "Debug this code:\n```\n\n```" }
+    ]
+};
+
+function renderTemplates() {
+    document.getElementById('math-summarize-section').innerHTML = TOOLS.smart.map(t => `
+        <button onclick="insertSnippet(\`${t.snippet}\`)" class="w-full flex items-center gap-4 p-3 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition-all">
+            <div class="w-8 h-8 flex items-center justify-center ${t.color} ${t.bg} rounded-lg"><i class="fas ${t.icon} text-xs"></i></div>
+            <div class="text-left"><p class="font-bold text-sm dark:text-white">${t.label}</p></div>
+        </button>`).join('');
+    document.getElementById('plus-templates').innerHTML = TOOLS.coding.map(t => `
+        <button onclick="insertSnippet(\`${t.snippet}\`)" class="w-full flex items-center gap-4 p-3 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition-all">
+            <div class="w-8 h-8 flex items-center justify-center ${t.color} ${t.bg} rounded-lg"><i class="fab ${t.icon} text-xs"></i></div>
+            <div class="text-left"><p class="font-bold text-sm dark:text-white">${t.label}</p></div>
+        </button>`).join('');
+}
+
+window.insertSnippet = (snippet) => {
+    input.value += snippet;
+    input.focus();
+    plusMenu.classList.add('hidden');
+    input.style.height = 'auto';
+    input.style.height = input.scrollHeight + 'px';
+};
+
+// ============================================================
+// THEME / PDF / VOICE
+// ============================================================
+document.getElementById('theme-toggle').onclick = () => {
+    localStorage.setItem('theme', document.documentElement.classList.toggle('dark') ? 'dark' : 'light');
+};
+if (localStorage.getItem('theme') === 'dark') document.documentElement.classList.add('dark');
+
+document.getElementById('export-pdf').onclick = () => {
+    html2pdf().from(container).set({
+        margin: 10, filename: `EduGenius_Chat_${currentId}.pdf`,
+        jsPDF: { format: 'a4', orientation: 'portrait' }
+    }).save();
+};
+
+const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (Speech) {
+    recognition = new Speech();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    document.getElementById('voice-btn').onclick = () => { recognition.start(); voiceCard.classList.remove('hidden'); };
+    recognition.onresult = (e) => { input.value = e.results[0][0].transcript; voiceCard.classList.add('hidden'); handleSend(); };
+    recognition.onend = () => voiceCard.classList.add('hidden');
+    recognition.onerror = () => voiceCard.classList.add('hidden');
+} else {
+    document.getElementById('voice-btn').style.display = 'none';
+}
+window.stopVoice = () => { if (recognition) recognition.stop(); voiceCard.classList.add('hidden'); };
+
+// ============================================================
+// PLUS BUTTON
+// ============================================================
+document.getElementById('plus-btn').onclick = (e) => {
+    e.stopPropagation();
+    plusMenu.classList.toggle('hidden');
+    if (!plusMenu.classList.contains('hidden')) {
+        setTimeout(() => { plusMenu.scrollTop = plusMenu.scrollHeight; }, 50);
+    }
+};
+document.addEventListener('click', (e) => {
+    if (!plusMenu.contains(e.target) && !document.getElementById('plus-btn').contains(e.target)) {
+        plusMenu.classList.add('hidden');
+    }
+});
+
+// ============================================================
+// QUICK ACTIONS
+// ============================================================
+window.quickAction = (action) => {
+    const prompts = {
+        summarize:  "Provide a comprehensive summary of this document in 3-5 paragraphs.",
+        flashcards: "Create 10 flashcards from this document. Format each as:\n\nQ: [question]\nA: [answer]",
+        quiz:       "Create 10 multiple-choice quiz questions from this document.",
+        explain:    "Explain the main concepts in simple terms with analogies and examples.",
+        keypoints:  "Extract the key points as a clear bullet-point list with brief explanations."
+    };
+    input.value = prompts[action] || "";
+    input.style.height = 'auto';
+    input.style.height = input.scrollHeight + 'px';
+    input.focus();
+};
+
+// ============================================================
+// FILE UPLOAD
+// ============================================================
+document.getElementById('file-input').onchange = async (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    e.target.value = '';
+
+    document.getElementById('preview-file-name').textContent = f.name;
+    document.getElementById('file-status-text').textContent = 'Processing...';
+    document.getElementById('file-status-text').className = 'text-[10px] text-yellow-500 font-medium';
+    document.getElementById('quick-actions').classList.add('hidden');
+    fileCard.classList.remove('hidden');
+
+    const setReady = (label) => {
+        document.getElementById('file-status-text').textContent = label;
+        document.getElementById('file-status-text').className = 'text-[10px] text-green-500 font-medium';
+        document.getElementById('quick-actions').classList.remove('hidden');
+        confetti({ particleCount: 30, origin: { y: 0.9 } });
+    };
+    const setError = (msg) => {
+        document.getElementById('file-status-text').textContent = msg;
+        document.getElementById('file-status-text').className = 'text-[10px] text-red-500 font-medium';
+    };
+
+    if (f.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            activeFile = { type: 'image', data: ev.target.result.split(',')[1], mime: f.type, name: f.name };
+            setReady('Image ready!');
+        };
+        reader.readAsDataURL(f);
+
+    } else if (f.type === 'application/pdf') {
+        const fileURL = URL.createObjectURL(f);
+        try {
+            if (!window.pdfjsLib) {
+                await new Promise((resolve, reject) => {
+                    const s = document.createElement('script');
+                    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+                    s.onload = resolve; s.onerror = reject;
+                    document.head.appendChild(s);
+                });
+                window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+                    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            }
+            document.getElementById('file-status-text').textContent = `Reading ${f.name}...`;
+            const pdf = await window.pdfjsLib.getDocument(fileURL).promise;
+            let fullText = '';
+            for (let i = 1; i <= Math.min(pdf.numPages, 20); i++) {
+                const page = await pdf.getPage(i);
+                const content = await page.getTextContent();
+                fullText += content.items.map(item => item.str).join(' ') + '\n\n';
+            }
+            fullText = fullText.trim();
+            if (!fullText) throw new Error('No text found in PDF');
+            activeFile = { type: 'text', content: fullText, name: f.name, pageCount: pdf.numPages };
+            setReady(`${pdf.numPages} pages • Ready!`);
+        } catch (err) {
+            setError(`Error: ${err.message}`);
+        } finally {
+            URL.revokeObjectURL(fileURL);
+        }
+
+    } else if (f.name.match(/\.pptx?$/i)) {
+        try {
+            if (!window.JSZip) {
+                await new Promise((resolve, reject) => {
+                    const s = document.createElement('script');
+                    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+                    s.onload = resolve; s.onerror = reject;
+                    document.head.appendChild(s);
+                });
+            }
+            document.getElementById('file-status-text').textContent = `Reading slides...`;
+            const arrayBuffer = await f.arrayBuffer();
+            const zip = await JSZip.loadAsync(arrayBuffer);
+            let fullText = '';
+            let slideCount = 0;
+            const slideFiles = Object.keys(zip.files)
+                .filter(name => name.match(/ppt\/slides\/slide\d+\.xml$/))
+                .sort((a, b) => parseInt(a.match(/\d+/)?.[0]||0) - parseInt(b.match(/\d+/)?.[0]||0));
+            for (const slidePath of slideFiles) {
+                slideCount++;
+                const xml = await zip.files[slidePath].async('string');
+                const text = xml.replace(/<a:t>/g, ' ').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+                if (text) fullText += `--- Slide ${slideCount} ---\n${text}\n\n`;
+            }
+            if (!fullText.trim()) throw new Error('No text found in presentation');
+            activeFile = { type: 'text', content: fullText, name: f.name, pageCount: slideCount };
+            setReady(`${slideCount} slides • Ready!`);
+        } catch (err) {
+            setError(`Error: ${err.message}`);
+        }
+
+    } else if (f.type.startsWith('text/') || f.name.match(/\.(txt|md|js|ts|py|html|css|json|csv|xml|yaml|yml)$/i)) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            activeFile = { type: 'text', content: ev.target.result, name: f.name };
+            setReady('Text file ready!');
+        };
+        reader.readAsText(f);
+
+    } else {
+        setError('Unsupported file type');
+        activeFile = null;
+    }
+};
+
+document.getElementById('clear-file').onclick = () => {
+    activeFile = null;
+    fileCard.classList.add('hidden');
+    document.getElementById('file-input').value = '';
+    document.getElementById('quick-actions').classList.add('hidden');
+};
+
+// ============================================================
+// BUBBLES
+// ============================================================
+function addBubble(text, isAI = false, save = true, modelKey = null) {
+    const div = document.createElement('div');
+    div.className = `flex gap-4 ${isAI ? '' : 'flex-row-reverse'} animate-pop mb-4`;
+    let fmt = text
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/```(\w+)?\n?([\s\S]*?)```/g, (_,lang,code) => `<pre><code>${code.trim()}</code></pre>`)
+        .replace(/\n/g,'<br>');
+    const tag = (isAI && modelKey && MODELS[modelKey])
+        ? `<div class="model-tag mb-1">${MODELS[modelKey].label}</div>` : '';
+    div.innerHTML = `
+        <div class="w-10 h-10 rounded-xl shrink-0 flex items-center justify-center ${isAI ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-300'}">
+            <i class="fas fa-${isAI ? 'sparkles' : 'user'} text-sm"></i>
+        </div>
+        <div class="chat-bubble ${isAI ? 'text-slate-800 dark:text-slate-200 py-1' : 'bg-indigo-600 text-white p-4 rounded-2xl rounded-tr-none shadow-md'}">
+            ${tag}<div>${fmt}</div>
+        </div>`;
+    container.appendChild(div);
+    if (save) { messages.push({ text, isAI, modelKey }); saveToHistory(); }
+    if (window.renderMathInElement) {
+        renderMathInElement(div, { delimiters: [
+            { left:"$$", right:"$$", display:true },
+            { left:"$",  right:"$",  display:false }
+        ]});
+    }
+    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+}
+
+// ============================================================
+// HISTORY
+// ============================================================
+function saveToHistory() {
+    const idx = chats.findIndex(c => c.id === currentId);
+    const obj = { id: currentId, title: messages[0]?.text.substring(0,30) || "New Chat", msgs: messages, timestamp: Date.now() };
+    if (idx > -1) chats[idx] = obj; else chats.unshift(obj);
+    localStorage.setItem('edu_v5', JSON.stringify(chats));
+    renderHistory();
+}
+
+function renderHistory() {
+    historyList.innerHTML = chats.map(c => `
+        <div onclick="loadChat(${c.id})" class="group flex items-center justify-between p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-all ${c.id===currentId?'bg-slate-100 dark:bg-slate-800':''}">
+            <div class="flex-1 overflow-hidden">
+                <p class="text-sm dark:text-slate-300 truncate font-medium">${c.title}</p>
+                <p class="text-[10px] text-slate-400">${new Date(c.timestamp||c.id).toLocaleDateString()}</p>
+            </div>
+            <i onclick="event.stopPropagation();delChat(${c.id})" class="fas fa-trash-alt opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 text-[10px] ml-2"></i>
+        </div>`).join('');
+}
+
+window.loadChat = (id) => {
+    const chat = chats.find(c => c.id === id);
+    if (!chat) return;
+    currentId = id; messages = chat.msgs || [];
+    container.innerHTML = '';
+    if (!messages.length) showWelcome();
+    else messages.forEach(m => addBubble(m.text, m.isAI, false, m.modelKey));
+};
+
+window.delChat = (id) => {
+    if (!confirm('Delete this chat?')) return;
+    chats = chats.filter(c => c.id !== id);
+    localStorage.setItem('edu_v5', JSON.stringify(chats));
+    if (currentId === id) startNew(); else renderHistory();
+};
+
+function showWelcome() {
+    container.innerHTML = `<div class="p-6 text-center text-slate-400 dark:text-slate-500">
+        <i class="fas fa-comments text-4xl mb-4 opacity-50"></i>
+        <p class="text-lg font-semibold">EduGenius AI</p>
+        <p class="text-sm">Ask me anything to start chatting!</p>
+    </div>`;
+}
+
+function startNew() {
+    currentId = Date.now(); messages = [];
+    showWelcome(); renderHistory();
+}
+
+window.clearAllData = () => {
+    if (confirm("Delete ALL chat history? This cannot be undone.")) {
+        localStorage.removeItem('edu_v5'); chats = []; startNew();
+    }
+};
+
+// ============================================================
+// INIT
+// ============================================================
+document.getElementById('new-chat-btn').onclick = startNew;
+sendBtn.onclick = handleSend;
+input.addEventListener('keydown', e => { if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } });
+renderModelSelector();
+renderTemplates();
+renderHistory();
+if (chats.length > 0) loadChat(chats[0].id); else startNew();
+console.log('✨ EduGenius AI ready — CLOUDFLARE_API_URL:', CLOUDFLARE_API_URL);
+</script>
+<script src="global.js"></script>
+</body>
+</html>

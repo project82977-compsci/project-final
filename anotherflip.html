@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartStudy Pro - Full Mastery</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-up { animation: fadeIn 0.5s ease-out forwards; }
+        
+        .flip-card { width: 100%; height: 200px; perspective: 1000px; cursor: pointer; }
+        .flip-card-inner { position: relative; width: 100%; height: 100%; transition: transform 0.8s; transform-style: preserve-3d; }
+        .flip-card.active .flip-card-inner { transform: rotateY(180deg); }
+        .flip-card-front, .flip-card-back { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 12px; display: flex; align-items: center; justify-content: center; padding: 20px; text-align: center; }
+        .flip-card-front { background: #1e293b; border: 1px solid #334155; color: white; }
+        .flip-card-back { background: #10b981; color: white; transform: rotateY(180deg); }
+
+        #loader { position: fixed; inset: 0; background: #ffffff; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; }
+        #loader img { width: 120px; height: auto; }
+        #loader h2 { margin-top: 15px; font-size: 22px; color: #0f172a; }
+        #loader p { margin-top: 5px; font-size: 14px; color: #475569; }
+        .hide-loader { opacity: 0; transition: opacity 0.6s ease; pointer-events: none; }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
+
+        .ai-card .flip-card-front { background: linear-gradient(135deg, #1e293b, #1e1b4b); border-color: #6366f1; }
+        .ai-card .flip-card-back { background: linear-gradient(135deg, #7c3aed, #6366f1); }
+        .ai-badge { position: absolute; top: 10px; right: 10px; background: #6366f1; color: white; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 999px; letter-spacing: 0.1em; }
+
+        /* MCQ Options */
+        .mcq-option { border: 2px solid #334155; transition: all 0.2s; cursor: pointer; border-radius: 14px; padding: 16px 20px; background: #0f172a; color: #cbd5e1; font-weight: 600; text-align: left; width: 100%; }
+        .mcq-option:hover:not(:disabled) { border-color: #3b82f6; background: #1e293b; color: white; }
+        .mcq-option.correct { border-color: #10b981 !important; background: #10b981/20 !important; color: #10b981 !important; }
+        .mcq-option.wrong { border-color: #ef4444 !important; background: rgba(239,68,68,0.1) !important; color: #ef4444 !important; }
+        .mcq-option.revealed { border-color: #10b981 !important; background: rgba(16,185,129,0.1) !important; color: #10b981 !important; }
+
+        /* Fill blank */
+        .fill-input { background: #0f172a; border: 2px solid #334155; border-radius: 12px; padding: 14px 18px; color: white; font-size: 18px; font-weight: 700; outline: none; width: 100%; text-align: center; transition: border-color 0.2s; }
+        .fill-input:focus { border-color: #3b82f6; }
+        .fill-input.correct { border-color: #10b981; background: rgba(16,185,129,0.1); color: #10b981; }
+        .fill-input.wrong { border-color: #ef4444; background: rgba(239,68,68,0.1); color: #ef4444; }
+
+        /* Type badge */
+        .type-badge { font-size: 10px; font-weight: 800; padding: 3px 10px; border-radius: 999px; letter-spacing: 0.1em; text-transform: uppercase; }
+        .badge-mcq { background: rgba(99,102,241,0.2); color: #818cf8; border: 1px solid #6366f1; }
+        .badge-fill { background: rgba(245,158,11,0.2); color: #fbbf24; border: 1px solid #f59e0b; }
+        .badge-qa { background: rgba(16,185,129,0.2); color: #34d399; border: 1px solid #10b981; }
+
+        /* Feedback flash */
+        @keyframes flashGreen { 0%,100% { background: #0b1120; } 50% { background: rgba(16,185,129,0.08); } }
+        @keyframes flashRed   { 0%,100% { background: #0b1120; } 50% { background: rgba(239,68,68,0.08); } }
+        .flash-correct { animation: flashGreen 0.5s ease; }
+        .flash-wrong   { animation: flashRed 0.5s ease; }
+    </style>
+</head>
+<body class="bg-[#0b1120] text-slate-300 min-h-screen flex">
+    <div id="loader">
+      <img src="online-class.gif" alt="Smart Study Loading" onerror="this.style.display='none'">
+      <h2>Smart Study with AI</h2>
+      <p>Loading your study space...</p>
+    </div>
+
+    <aside class="w-72 border-r border-slate-800 p-8 hidden xl:flex flex-col h-screen sticky top-0">
+        <div class="flex items-center gap-3 mb-12">
+            <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/20">
+                <i class="fa-solid fa-graduation-cap text-white text-xl"></i>
+            </div>
+            <h1 class="text-2xl font-black text-white tracking-tighter">SmartStudy</h1>
+        </div>
+        
+        <div class="mb-10 text-center">
+            <img id="user-photo" src="https://api.dicebear.com/7.x/avataaars/svg?seed=student" class="w-20 h-20 rounded-full mx-auto border-4 border-slate-800 mb-4" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'">
+            <h2 id="user-name" class="text-white font-bold text-lg">Student</h2>
+            <p id="user-level" class="text-slate-500 text-sm">Level 1 Scholar</p>
+        </div>
+
+        <div>
+            <h2 class="text-4xl font-black text-white mb-2">Welcome back, <span id="welcome-name-sidebar">Student</span></h2>
+            <p class="text-slate-500">Ready to master your active cards?</p>
+        </div>
+        
+        <nav class="space-y-2 flex-1">
+            <div onclick="window.location.href='dash3.html'" class="p-3 bg-blue-600/10 text-blue-400 rounded-xl flex items-center gap-4 font-bold cursor-pointer">
+                <i class="fa-solid fa-table-columns"></i> Dashboard
+            </div>
+            <div onclick="window.location.href='vault.html'" class="p-3 text-slate-500 hover:text-white rounded-xl flex items-center gap-4 transition cursor-pointer">
+                <i class="fa-solid fa-vault"></i> Storage Vault
+            </div>
+        </nav>
+    
+        <div class="mt-auto p-4 bg-slate-900/50 rounded-2xl border border-slate-800">
+            <div class="flex justify-between text-xs font-bold mb-2 text-slate-500">
+                <span>WEEKLY GOAL</span>
+                <span class="text-blue-400">72%</span>
+            </div>
+            <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                <div class="bg-blue-500 h-full w-[72%]"></div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 p-6 lg:p-12 overflow-y-auto">
+        
+        <div id="main-dashboard" class="animate-up">
+            <header class="flex justify-between items-center mb-10">
+                <div>
+                    <h2 class="text-4xl font-black text-white mb-2">Welcome back, <span id="welcome-name">Student</span></h2>
+                    <p class="text-slate-500">Ready to master your <span id="card-count">15</span> active cards?</p>
+                </div>
+            </header>
+            
+            <!-- AI GENERATION -->
+            <div class="mt-8 p-6 bg-[#0f172a]/80 border border-slate-800 rounded-3xl animate-up">
+                <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+                    <div class="flex-1">
+                        <h4 class="text-white font-bold text-lg">Want a fresh challenge?</h4>
+                        <p class="text-slate-500 text-sm">Generate new AI flashcards based on any topic.</p>
+                    </div>
+                    <div class="flex items-center gap-3 w-full md:w-auto">
+                        <input type="text" id="ai-topic-input" placeholder="Enter topic..." 
+                               class="bg-slate-950 border border-slate-800 p-3 px-5 rounded-xl text-white outline-none focus:border-orange-500 transition w-full md:w-64 text-sm font-medium">
+                        <button id="ai-magic-btn" class="whitespace-nowrap px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white font-black rounded-xl hover:scale-105 transition-transform uppercase text-[10px] tracking-widest shadow-lg shadow-orange-500/20">
+                            ✨ Generate with AI
+                        </button>
+                    </div>
+                </div>
+                <div id="ai-loading-status" class="hidden mt-4 text-center text-orange-400 text-xs font-bold animate-pulse uppercase tracking-widest">
+                    Brainstorming questions...
+                </div>
+                <div id="ai-error-msg" class="hidden mt-4 text-center text-red-400 text-xs font-bold uppercase tracking-widest"></div>
+            </div>
+            
+            <!-- MANUAL ADD -->
+            <section class="bg-slate-900/50 border border-slate-800 p-8 rounded-3xl mb-12 animate-up mt-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-sm font-black text-orange-500 uppercase tracking-[0.2em]">Manual Add</h3>
+                    <button onclick="document.getElementById('manual-form').classList.toggle('hidden')" class="text-xs font-bold text-slate-500 hover:text-white">Toggle Form</button>
+                </div>
+                <div id="manual-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" id="new-q" placeholder="Question" class="bg-slate-950 border border-slate-800 p-3 rounded-xl text-white outline-none focus:border-orange-500">
+                    <input type="text" id="new-subj" placeholder="Subject (e.g. SQL, DP)" class="bg-slate-950 border border-slate-800 p-3 rounded-xl text-white outline-none focus:border-orange-500">
+                    <textarea id="new-a" placeholder="Answer" class="md:col-span-2 bg-slate-950 border border-slate-800 p-3 rounded-xl text-white outline-none focus:border-orange-500 h-24"></textarea>
+                    <button onclick="addCardManually()" class="md:col-span-2 bg-orange-600 hover:bg-orange-500 text-white py-3 rounded-xl font-black transition uppercase tracking-widest text-xs">
+                        Add to My Collection
+                    </button>
+                </div>
+            </section>
+
+            <!-- TEST CONFIG -->
+            <section class="bg-slate-900/50 border border-slate-800 p-8 rounded-3xl mb-12">
+                <h3 class="text-sm font-black text-blue-500 uppercase tracking-[0.2em] mb-6">Test Configuration</h3>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-2">QUESTION TYPE</label>
+                        <select id="question-type" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl text-white outline-none focus:border-blue-500 transition">
+                            <option value="all">All Types (Mixed)</option>
+                            <option value="mcq">Multiple Choice Only</option>
+                            <option value="fill">Fill in the Blank Only</option>
+                            <option value="qa">Q/A Only</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-2">TIME PER Q (SEC)</label>
+                        <input type="number" id="time-per-question" value="20" min="5" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-2">QUESTION COUNT</label>
+                        <input type="number" id="questions-count" value="10" min="1" max="15" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl text-white">
+                    </div>
+                    <button id="start-test" class="bg-blue-600 hover:bg-blue-500 text-white py-3.5 rounded-xl font-black transition shadow-lg shadow-blue-600/20 uppercase tracking-widest">
+                        Start Scored Test
+                    </button>
+                </div>
+            </section>
+
+            <!-- SUBJECT PILLS -->
+            <div class="flex items-center gap-4 mb-8 overflow-x-auto no-scrollbar pb-2">
+                <button class="subject-pill px-5 py-2 rounded-full bg-blue-600 text-white font-bold text-sm whitespace-nowrap" data-subject="all">All Subjects</button>
+                <button class="subject-pill px-5 py-2 rounded-full bg-slate-900 border border-slate-800 text-sm whitespace-nowrap hover:bg-slate-800 transition" data-subject="graph">Graph Algorithms</button>
+                <button class="subject-pill px-5 py-2 rounded-full bg-slate-900 border border-slate-800 text-sm whitespace-nowrap hover:bg-slate-800 transition" data-subject="dp">Dynamic Programming</button>
+                <button class="subject-pill px-5 py-2 rounded-full bg-slate-900 border border-slate-800 text-sm whitespace-nowrap hover:bg-slate-800 transition" data-subject="sql">SQL</button>
+                <button class="subject-pill px-5 py-2 rounded-full bg-slate-900 border border-slate-800 text-sm whitespace-nowrap hover:bg-slate-800 transition" data-subject="transactions">Transactions</button>
+                <button class="subject-pill px-5 py-2 rounded-full bg-slate-900 border border-slate-800 text-sm whitespace-nowrap hover:bg-slate-800 transition" data-subject="indexing">Indexing</button>
+                <button class="subject-pill px-5 py-2 rounded-full bg-slate-900 border border-slate-800 text-sm whitespace-nowrap hover:bg-slate-800 transition" data-subject="normalization">Normalization</button>
+                <button class="subject-pill px-5 py-2 rounded-full bg-slate-900 border border-slate-800 text-sm whitespace-nowrap hover:bg-slate-800 transition" data-subject="complexity">Complexity</button>
+            </div>
+
+            <div id="card-container" class="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6"></div>
+        </div>
+
+        <!-- TEST VIEW -->
+        <div id="test-view" class="hidden max-w-3xl mx-auto py-12 animate-up">
+            <div class="bg-slate-900 border border-slate-800 rounded-[40px] p-10 shadow-2xl relative overflow-hidden" id="test-card">
+                <div id="timer-progress" class="absolute top-0 left-0 h-1.5 bg-blue-500 transition-all duration-1000 w-full"></div>
+                
+                <div class="flex justify-between items-center mb-6">
+                    <span id="q-status" class="text-blue-500 font-black uppercase text-xs tracking-widest">Question 1 / 10</span>
+                    <div class="flex items-center gap-3">
+                        <span id="q-type-badge" class="type-badge badge-mcq">MCQ</span>
+                        <span id="timer-display" class="bg-slate-950 px-4 py-1.5 rounded-full text-red-400 font-mono font-bold border border-red-400/20">20s</span>
+                    </div>
+                </div>
+
+                <div id="test-content" class="min-h-[300px] flex flex-col justify-center">
+                    <h2 id="question-text" class="text-2xl font-bold text-white text-center mb-10 leading-tight"></h2>
+                    <div id="answer-options" class="flex flex-col gap-3"></div>
+                </div>
+
+                <div class="flex justify-between items-center mt-10 pt-8 border-t border-slate-800">
+                    <p class="text-slate-500 font-bold">SCORE: <span id="live-score" class="text-green-500">0</span></p>
+                    <button id="next-question" class="hidden bg-white text-slate-900 px-10 py-3 rounded-2xl font-black hover:bg-blue-400 hover:text-white transition">
+                        NEXT →
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- RESULTS VIEW -->
+        <div id="results-view" class="hidden max-w-4xl mx-auto py-12 animate-up">
+            <div class="bg-white rounded-[40px] p-12 text-slate-900 shadow-2xl flex flex-col md:flex-row gap-12">
+                <div class="flex-1">
+                    <h2 class="text-sm font-black text-slate-400 uppercase tracking-widest mb-8">Progress Tracker</h2>
+                    <div class="space-y-4" id="result-breakdown"></div>
+                </div>
+                <div class="w-full md:w-64 flex flex-col items-center justify-center bg-slate-50 rounded-3xl p-8 border border-slate-200">
+                    <div class="relative w-40 h-40 flex items-center justify-center mb-6">
+                        <svg class="w-full h-full -rotate-90">
+                            <circle cx="80" cy="80" r="70" fill="none" stroke="#e2e8f0" stroke-width="12"></circle>
+                            <circle id="score-circle" cx="80" cy="80" r="70" fill="none" stroke="#3b82f6" stroke-width="12" stroke-dasharray="440" stroke-dashoffset="440" stroke-linecap="round"></circle>
+                        </svg>
+                        <span id="final-pct" class="absolute text-4xl font-black text-slate-900">0%</span>
+                    </div>
+                    <p class="text-slate-500 font-bold uppercase text-[10px] tracking-widest">Final Score</p>
+                    <button onclick="location.reload()" class="mt-8 w-full bg-slate-900 text-white py-4 rounded-2xl font-bold">RETRY PRACTICE</button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+<script type="module">
+// ✅ FIX: Import CLOUDFLARE_API_URL instead of broken generateFlashcards wrapper
+// generateFlashcards in firebase.js calls /generate-questions which may not be
+// deployed yet, and even if it is, the response parsing chain can silently fail.
+// This direct /chat call is the same pattern used by the working chat page.
+import { db, auth, CLOUDFLARE_API_URL } from "./firebase.js";
+import { doc, updateDoc, getDoc, increment, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+// ✅ Local generateFlashcards — calls /chat directly (proven to work)
+async function generateFlashcards(topic, count = 5) {
+    const response = await fetch(`${CLOUDFLARE_API_URL}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            messages: [
+                {
+                    role: "system",
+                    content: `You are a study assistant. Generate exactly ${count} educational flashcards in valid JSON format ONLY. No markdown, no code fences, no extra text. Format: [{"question":"...","answer":"..."},...]`
+                },
+                {
+                    role: "user",
+                    content: `Generate ${count} flashcards about: ${topic}`
+                }
+            ]
+        })
+    });
+    if (!response.ok) throw new Error(`Worker error ${response.status}: ${await response.text()}`);
+    const data = await response.json();
+    const cleaned = (data.reply || '').replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    let cards;
+    try {
+        const parsed = JSON.parse(cleaned);
+        cards = Array.isArray(parsed) ? parsed : (parsed.flashcards || parsed.questions || []);
+    } catch (e) {
+        throw new Error('AI returned invalid format. Please try again.');
+    }
+    if (!cards.length) throw new Error('AI returned empty cards. Please try again.');
+    return { flashcards: cards }; // same shape the button handler expects
+}
+
+// ============================================================
+// FLASHCARDS
+// ============================================================
+const localCards = [
+    { type: 'qa', subject: 'Graph', question: "Adjacency List vs Matrix", answer: "List: O(V+E), good for sparse. Matrix: O(V²), good for dense." },
+    { type: 'qa', subject: 'Graph', question: "BFS vs DFS", answer: "BFS: Queue, shortest path (unweighted). DFS: Stack/recursion, cycle detection." },
+    { type: 'qa', subject: 'Graph', question: "Dijkstra vs Bellman-Ford", answer: "Dijkstra: No negatives, O(E + V log V). Bellman-Ford: Handles negatives, O(VE)." },
+    { type: 'qa', subject: 'Graph', question: "Kruskal vs Prim", answer: "Kruskal: Union-Find, sort edges. Prim: Priority queue, grows tree." },
+    { type: 'qa', subject: 'Graph', question: "Topological Sort", answer: "Only for DAGs. Use DFS postorder reverse or Kahn's algo." },
+    { type: 'qa', subject: 'DP', question: "DP Steps", answer: "1. Identify subproblem 2. Define state 3. Write recurrence 4. Memoize/Tabulate" },
+    { type: 'qa', subject: 'DP', question: "0/1 Knapsack", answer: "dp[i][w] = max(dp[i-1][w], dp[i-1][w-weight] + value)" },
+    { type: 'qa', subject: 'DP', question: "Fibonacci DP", answer: "dp[i] = dp[i-1] + dp[i-2], Space-optimized: use two vars" },
+    { type: 'qa', subject: 'Complexity', question: "Master Theorem", answer: "T(n) = aT(n/b) + f(n). Compare f(n) to n^log_b(a) to classify." },
+    { type: 'qa', subject: 'SQL', question: "What is SQL?", answer: "Structured Query Language for managing relational databases." },
+    { type: 'qa', subject: 'SQL', question: "SQL Commands", answer: "SELECT, INSERT, DELETE, UPDATE, CREATE TABLE, ALTER TABLE." },
+    { type: 'qa', subject: 'Normalization', question: "Normal Forms (1NF-BCNF)", answer: "1NF: Atomic. 2NF: No partial dependency. 3NF: No transitive dependency. BCNF: Stronger 3NF." },
+    { type: 'qa', subject: 'Transactions', question: "ACID", answer: "Atomicity, Consistency, Isolation, Durability" },
+    { type: 'qa', subject: 'Indexing', question: "Clustered Index", answer: "Sorts actual rows. Only one per table." },
+    { type: 'qa', subject: 'Indexing', question: "Non-clustered Index", answer: "Separate from actual data. Points to rows." }
+];
+
+// ============================================================
+// TEST STATE
+// ============================================================
+let testSet = [];
+let score = 0;
+let currentIdx = 0;
+let timer = null;
+let timeLeft = 0;
+let userAnswers = [];
+let testStartTime = null;
+let answered = false;
+
+// ============================================================
+// INIT
+// ============================================================
+window.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+        document.getElementById('loader').classList.add('hide-loader');
+        renderDashboard();
+    }, 800);
+});
+
+document.querySelectorAll('.subject-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.subject-pill').forEach(b => {
+            b.classList.remove('bg-blue-600', 'text-white');
+            b.classList.add('bg-slate-900', 'border', 'border-slate-800');
+        });
+        btn.classList.remove('bg-slate-900', 'border', 'border-slate-800');
+        btn.classList.add('bg-blue-600', 'text-white');
+        const subject = btn.dataset.subject;
+        renderDashboard(subject === 'all' ? 'all' : subject);
+    });
+});
+
+function renderDashboard(filter = 'all') {
+    const grid = document.getElementById('card-container');
+    grid.innerHTML = '';
+    const cards = filter === 'all' ? localCards : localCards.filter(c => c.subject.toLowerCase() === filter.toLowerCase());
+    document.getElementById('card-count').innerText = cards.length;
+    if (!cards.length) {
+        grid.innerHTML = `<p class="text-slate-500">No cards found for "${filter}".</p>`;
+        return;
+    }
+    cards.forEach(card => {
+        const div = document.createElement('div');
+        div.className = `flip-card${card.isAI ? ' ai-card' : ''}`;
+        div.innerHTML = `
+            <div class="flip-card-inner">
+                <div class="flip-card-front">
+                    ${card.isAI ? '<span class="ai-badge">✨ AI</span>' : ''}
+                    <div>
+                        <div class="text-xs font-bold text-slate-500 mb-3">${card.subject.toUpperCase()}</div>
+                        <div class="text-lg font-bold">${card.question}</div>
+                    </div>
+                </div>
+                <div class="flip-card-back">
+                    <div class="text-base">${card.answer}</div>
+                </div>
+            </div>`;
+        div.onclick = () => div.classList.toggle('active');
+        grid.appendChild(div);
+    });
+}
+
+window.addCardManually = function () {
+    const q = document.getElementById('new-q').value.trim();
+    const s = document.getElementById('new-subj').value.trim();
+    const a = document.getElementById('new-a').value.trim();
+    if (!q || !s || !a) { alert("Please fill all fields."); return; }
+    localCards.push({ type: 'qa', subject: s, question: q, answer: a });
+    document.getElementById('new-q').value = '';
+    document.getElementById('new-subj').value = '';
+    document.getElementById('new-a').value = '';
+    alert('Card added successfully!');
+    renderDashboard('all');
+};
+
+// ============================================================
+// AI FLASHCARD GENERATION (USING FIREBASE.JS)
+// ============================================================
+document.getElementById('ai-magic-btn').onclick = async () => {
+    const topic = document.getElementById('ai-topic-input').value.trim();
+    const btn = document.getElementById('ai-magic-btn');
+    const status = document.getElementById('ai-loading-status');
+    const errorMsg = document.getElementById('ai-error-msg');
+    
+    if (!topic) { 
+        alert("Please enter a topic."); 
+        return; 
+    }
+
+    btn.disabled = true;
+    btn.innerText = "GENERATING...";
+    status.classList.remove('hidden');
+    errorMsg.classList.add('hidden');
+
+    try {
+        console.log('📚 Generating flashcards for:', topic);
+
+        // 🔥 CALL CLOUDFLARE WORKER VIA FIREBASE.JS
+        const result = await generateFlashcards(topic, 5);
+        const cards = result.flashcards || [];
+
+        if (cards.length === 0) {
+            throw new Error("AI returned empty cards.");
+        }
+
+        let added = 0;
+        cards.forEach(c => {
+            if (c.question && c.answer) {
+                localCards.push({ 
+                    type: 'qa', 
+                    subject: topic, 
+                    question: c.question, 
+                    answer: c.answer, 
+                    isAI: true 
+                });
+                added++;
+            }
+        });
+
+        renderDashboard('all');
+        
+        status.innerText = `✅ ${added} new cards added!`;
+        status.classList.remove('animate-pulse', 'text-orange-400');
+        status.classList.add('text-green-400');
+        
+        setTimeout(() => {
+            status.classList.add('hidden');
+            status.classList.remove('text-green-400');
+            status.classList.add('animate-pulse', 'text-orange-400');
+            status.innerText = 'Brainstorming questions...';
+        }, 3000);
+
+        console.log(`✅ Added ${added} AI flashcards!`);
+
+    } catch (err) {
+        console.error('❌ AI generation failed:', err);
+        errorMsg.innerText = `⚠️ ${err.message}`;
+        errorMsg.classList.remove('hidden');
+        status.classList.add('hidden');
+        setTimeout(() => errorMsg.classList.add('hidden'), 5000);
+    } finally {
+        btn.disabled = false;
+        btn.innerText = "✨ GENERATE WITH AI";
+    }
+};
+
+// ============================================================
+// TIMER
+// ============================================================
+function startTimer(seconds) {
+    clearInterval(timer);
+    timeLeft = seconds;
+    document.getElementById('timer-display').innerText = `${timeLeft}s`;
+    const progressBar = document.getElementById('timer-progress');
+    progressBar.style.width = '100%';
+    progressBar.style.background = '#3b82f6';
+
+    timer = setInterval(() => {
+        timeLeft--;
+        document.getElementById('timer-display').innerText = `${timeLeft}s`;
+        const pct = (timeLeft / seconds) * 100;
+        progressBar.style.width = `${pct}%`;
+        if (timeLeft <= 5) progressBar.style.background = '#ef4444';
+
+        if (timeLeft <= 0) {
+            clearInterval(timer);
+            if (!answered) timeOut();
+        }
+    }, 1000);
+}
+
+function timeOut() {
+    answered = true;
+    userAnswers.push({
+        question: testSet[currentIdx].question,
+        subject: testSet[currentIdx].subject,
+        correct: false,
+        mode: testSet[currentIdx]._testMode,
+        timedOut: true
+    });
+    flashCard(false);
+    revealCorrectAnswer();
+    showNextBtn();
+}
+
+// ============================================================
+// BUILD TEST SET
+// ============================================================
+document.getElementById('start-test').onclick = () => {
+    const type = document.getElementById('question-type').value;
+    const count = parseInt(document.getElementById('questions-count').value);
+
+    let pool = [...localCards];
+    pool = pool.sort(() => 0.5 - Math.random()).slice(0, Math.min(count, pool.length));
+
+    if (pool.length === 0) {
+        alert("No questions available.");
+        return;
+    }
+
+    testSet = pool.map(card => {
+        let mode;
+        if (type === 'mcq') mode = 'mcq';
+        else if (type === 'fill') mode = 'fill';
+        else if (type === 'qa') mode = 'qa';
+        else {
+            const modes = ['mcq', 'fill', 'qa'];
+            mode = modes[Math.floor(Math.random() * modes.length)];
+        }
+        return { ...card, _testMode: mode };
+    });
+
+    testStartTime = Date.now();
+    document.getElementById('main-dashboard').classList.add('hidden');
+    document.getElementById('test-view').classList.remove('hidden');
+    currentIdx = 0;
+    score = 0;
+    userAnswers = [];
+    document.getElementById('live-score').innerText = '0';
+    loadQuestion();
+};
+
+// ============================================================
+// LOAD QUESTION
+// ============================================================
+function loadQuestion() {
+    if (currentIdx >= testSet.length) {
+        showResults();
+        return;
+    }
+
+    answered = false;
+    document.getElementById('next-question').classList.add('hidden');
+
+    const q = testSet[currentIdx];
+    document.getElementById('q-status').innerText = `Question ${currentIdx + 1} / ${testSet.length}`;
+    document.getElementById('question-text').innerText = q.question;
+
+    const badge = document.getElementById('q-type-badge');
+    if (q._testMode === 'mcq') { badge.className = 'type-badge badge-mcq'; badge.innerText = 'MCQ'; }
+    else if (q._testMode === 'fill') { badge.className = 'type-badge badge-fill'; badge.innerText = 'FILL BLANK'; }
+    else { badge.className = 'type-badge badge-qa'; badge.innerText = 'Q / A'; }
+
+    const timePerQ = parseInt(document.getElementById('time-per-question').value);
+    startTimer(timePerQ);
+
+    if (q._testMode === 'mcq') renderMCQ(q);
+    else if (q._testMode === 'fill') renderFill(q);
+    else renderQA(q);
+}
+
+// ============================================================
+// MCQ
+// ============================================================
+function renderMCQ(q) {
+    const area = document.getElementById('answer-options');
+    const others = localCards
+        .filter(c => c.answer !== q.answer)
+        .sort(() => 0.5 - Math.random())
+        .slice(0, 3)
+        .map(c => c.answer);
+    const options = [...others, q.answer].sort(() => 0.5 - Math.random());
+
+    area.innerHTML = '';
+    options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'mcq-option';
+        btn.innerText = opt;
+        btn.dataset.value = opt;
+        btn.onclick = () => handleMCQAnswer(btn, opt, q.answer, options);
+        area.appendChild(btn);
+    });
+}
+
+function handleMCQAnswer(btn, chosen, correct, allOptions) {
+    if (answered) return;
+    answered = true;
+    clearInterval(timer);
+
+    const isCorrect = chosen === correct;
+
+    document.querySelectorAll('.mcq-option').forEach(b => {
+        b.disabled = true;
+        if (b.dataset.value === correct) {
+            b.classList.add('correct');
+        } else if (b === btn && !isCorrect) {
+            b.classList.add('wrong');
+        }
+    });
+
+    recordAnswer(isCorrect, testSet[currentIdx], 'mcq');
+    flashCard(isCorrect);
+    showNextBtn();
+}
+
+// ============================================================
+// FILL IN THE BLANK
+// ============================================================
+function renderFill(q) {
+    const area = document.getElementById('answer-options');
+    const stopWords = new Set(['the','a','an','is','are','for','and','or','of','in','to','with','that','this','it','by','on','at','from','good','use','only','both']);
+    const words = q.answer.split(/[\s,.:;()]+/).filter(w => w.length > 3 && !stopWords.has(w.toLowerCase()));
+    const blankWord = words.sort((a, b) => b.length - a.length)[0] || q.answer.split(' ')[0];
+    const displayed = q.answer.replace(blankWord, '______');
+
+    area.innerHTML = `
+        <p class="text-slate-400 text-sm text-center mb-2">Fill in the missing word:</p>
+        <p class="text-white text-center text-lg font-bold mb-6 leading-relaxed bg-slate-800/50 p-4 rounded-2xl">${displayed}</p>
+        <input type="text" id="fill-input" class="fill-input" placeholder="Type the missing word..." autocomplete="off" autocorrect="off" spellcheck="false" />
+        <button id="fill-submit" class="mt-4 w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-black transition uppercase tracking-widest text-xs">Submit Answer</button>
+        <p id="fill-feedback" class="hidden text-center font-bold mt-4 text-sm"></p>
+    `;
+
+    const input = document.getElementById('fill-input');
+    input.focus();
+
+    const submitFn = () => handleFillAnswer(input.value.trim(), blankWord, q);
+    document.getElementById('fill-submit').onclick = submitFn;
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') submitFn(); });
+}
+
+function handleFillAnswer(typed, correct, q) {
+    if (answered) return;
+    if (!typed) return;
+    answered = true;
+    clearInterval(timer);
+
+    const isCorrect = typed.toLowerCase().trim() === correct.toLowerCase().trim();
+    const input = document.getElementById('fill-input');
+    const feedback = document.getElementById('fill-feedback');
+    const submitBtn = document.getElementById('fill-submit');
+
+    input.disabled = true;
+    submitBtn.disabled = true;
+
+    if (isCorrect) {
+        input.classList.add('correct');
+        feedback.innerText = '✓ Correct!';
+        feedback.className = 'text-center font-bold mt-4 text-sm text-green-400';
+    } else {
+        input.classList.add('wrong');
+        feedback.innerText = `✗ The answer was: "${correct}"`;
+        feedback.className = 'text-center font-bold mt-4 text-sm text-red-400';
+    }
+    feedback.classList.remove('hidden');
+
+    recordAnswer(isCorrect, q, 'fill');
+    flashCard(isCorrect);
+    showNextBtn();
+}
+
+// ============================================================
+// Q/A
+// ============================================================
+function renderQA(q) {
+    const area = document.getElementById('answer-options');
+    area.innerHTML = `
+        <button id="reveal-qa" class="w-full py-10 border-2 border-dashed border-slate-700 rounded-3xl text-slate-500 hover:text-blue-400 hover:border-blue-500 transition font-bold text-sm uppercase tracking-widest">
+            👁 Click to Reveal Answer
+        </button>
+        <div id="qa-box" class="hidden flex flex-col gap-4">
+            <div class="bg-blue-600/10 p-6 rounded-2xl text-blue-300 text-center text-base font-semibold border border-blue-600/20 leading-relaxed">${q.answer}</div>
+            <p class="text-center text-slate-500 text-xs font-bold uppercase tracking-widest">Were you correct?</p>
+            <div class="flex gap-4">
+                <button id="judge-wrong" class="flex-1 bg-red-500/10 text-red-400 p-4 rounded-xl border border-red-500/20 font-bold hover:bg-red-500/20 transition text-sm">✗ I Was Wrong</button>
+                <button id="judge-right" class="flex-1 bg-green-500/10 text-green-400 p-4 rounded-xl border border-green-500/20 font-bold hover:bg-green-500/20 transition text-sm">✓ I Was Correct</button>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('reveal-qa').onclick = () => {
+        document.getElementById('reveal-qa').classList.add('hidden');
+        document.getElementById('qa-box').classList.remove('hidden');
+        clearInterval(timer);
+    };
+
+    document.getElementById('judge-wrong').onclick = () => {
+        if (answered) return;
+        answered = true;
+        document.getElementById('judge-wrong').classList.add('bg-red-500/30');
+        document.getElementById('judge-right').disabled = true;
+        document.getElementById('judge-wrong').disabled = true;
+        recordAnswer(false, q, 'qa');
+        flashCard(false);
+        showNextBtn();
+    };
+
+    document.getElementById('judge-right').onclick = () => {
+        if (answered) return;
+        answered = true;
+        document.getElementById('judge-right').classList.add('bg-green-500/30');
+        document.getElementById('judge-wrong').disabled = true;
+        document.getElementById('judge-right').disabled = true;
+        recordAnswer(true, q, 'qa');
+        flashCard(true);
+        showNextBtn();
+    };
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function recordAnswer(isCorrect, q, mode) {
+    if (isCorrect) {
+        score++;
+        document.getElementById('live-score').innerText = score;
+    }
+    userAnswers.push({ question: q.question, subject: q.subject, correct: isCorrect, mode });
+}
+
+function flashCard(isCorrect) {
+    const card = document.getElementById('test-card');
+    card.classList.add(isCorrect ? 'flash-correct' : 'flash-wrong');
+    setTimeout(() => card.classList.remove('flash-correct', 'flash-wrong'), 500);
+}
+
+function revealCorrectAnswer() {
+    const q = testSet[currentIdx];
+    if (q._testMode === 'mcq') {
+        document.querySelectorAll('.mcq-option').forEach(b => {
+            b.disabled = true;
+            if (b.dataset.value === q.answer) b.classList.add('revealed');
+        });
+    } else if (q._testMode === 'fill') {
+        const fb = document.getElementById('fill-feedback');
+        if (fb) {
+            fb.innerText = `⏱ Time up! Answer: "${q.answer}"`;
+            fb.className = 'text-center font-bold mt-4 text-sm text-yellow-400';
+            fb.classList.remove('hidden');
+        }
+        const inp = document.getElementById('fill-input');
+        if (inp) inp.disabled = true;
+        const sub = document.getElementById('fill-submit');
+        if (sub) sub.disabled = true;
+    }
+}
+
+function showNextBtn() {
+    document.getElementById('next-question').classList.remove('hidden');
+}
+
+document.getElementById('next-question').onclick = () => {
+    currentIdx++;
+    loadQuestion();
+};
+
+// ============================================================
+// RESULTS
+// ============================================================
+async function showResults() {
+    document.getElementById('test-view').classList.add('hidden');
+    document.getElementById('results-view').classList.remove('hidden');
+
+    const timeSpentMinutes = Math.round((Date.now() - testStartTime) / 60000);
+    const pct = Math.round((score / testSet.length) * 100);
+
+    document.getElementById('final-pct').innerText = pct + '%';
+    const circumference = 440;
+    document.getElementById('score-circle').style.strokeDashoffset = circumference - (circumference * pct / 100);
+
+    const modeLabelMap = { mcq: '🟣 MCQ', fill: '🟡 Fill', qa: '🟢 Q/A' };
+    const breakdown = document.getElementById('result-breakdown');
+    breakdown.innerHTML = userAnswers.map(a => `
+        <div class="flex justify-between items-center p-4 bg-slate-50 rounded-xl">
+            <div class="flex-1">
+                <div class="font-bold text-sm">${a.question}</div>
+                <div class="flex gap-2 mt-1">
+                    <span class="text-xs text-slate-400">${a.subject}</span>
+                    <span class="text-xs text-slate-400">${modeLabelMap[a.mode] || ''}</span>
+                    ${a.timedOut ? '<span class="text-xs text-yellow-500">⏱ Timed out</span>' : ''}
+                </div>
+            </div>
+            <span class="${a.correct ? 'text-green-500' : 'text-red-500'} font-bold text-sm">${a.correct ? '✓ Correct' : '✗ Wrong'}</span>
+        </div>
+    `).join('');
+
+    breakdown.innerHTML += `
+        <div class="p-4 bg-blue-50 rounded-xl border-2 border-blue-200 text-center">
+            <div class="text-sm font-bold text-slate-600">⏱️ Time Spent</div>
+            <div class="text-3xl font-black text-blue-600">${timeSpentMinutes} min</div>
+        </div>
+    `;
+
+    await saveTestStats(timeSpentMinutes, pct);
+}
+
+// ============================================================
+// FIREBASE SAVE STATS
+// ============================================================
+async function saveTestStats(minutesSpent, scorePercentage) {
+    const user = auth.currentUser;
+    if (!user) return;
+    try {
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
+        if (!userSnap.exists()) return;
+        const data = userSnap.data();
+        const today = new Date().toISOString().split('T')[0];
+        const oldTotal = data.testStats?.totalTests || 0;
+        const oldAvg = data.testStats?.averageScore || 0;
+        const newAvg = Math.round((oldAvg * oldTotal + scorePercentage) / (oldTotal + 1));
+        const todayMinutes = data.studyTime?.lastUpdated === today ? (data.studyTime?.todayMinutes || 0) + minutesSpent : minutesSpent;
+        await updateDoc(userRef, {
+            'testStats.totalTests': increment(1),
+            'testStats.totalQuestions': increment(testSet.length),
+            'testStats.correctAnswers': increment(score),
+            'testStats.averageScore': newAvg,
+            'testStats.timeSpentMinutes': increment(minutesSpent),
+            'studyTime.totalMinutes': increment(minutesSpent),
+            'studyTime.todayMinutes': todayMinutes,
+            'studyTime.weekMinutes': increment(minutesSpent),
+            'studyTime.lastUpdated': today,
+            totalXP: increment(testSet.length * 10)
+        });
+        console.log(`✅ Saved: ${minutesSpent}min, ${scorePercentage}%, XP+${testSet.length * 10}`);
+    } catch (e) { console.error('Failed to save stats:', e); }
+}
+
+// ============================================================
+// AUTH + REAL-TIME LEVEL
+// ============================================================
+onAuthStateChanged(auth, async (user) => {
+    if (user) {
+        const displayName = user.displayName || 'Student';
+        document.getElementById('user-name').innerText = displayName;
+        document.getElementById('welcome-name').innerText = displayName;
+        document.getElementById('welcome-name-sidebar').innerText = displayName;
+        if (user.photoURL) document.getElementById('user-photo').src = user.photoURL;
+
+        const userRef = doc(db, 'users', user.uid);
+        onSnapshot(userRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const totalXP = docSnap.data().totalXP || 0;
+                const level = Math.floor(totalXP / 2000) + 1;
+                const el = document.getElementById('user-level');
+                if (el) el.innerText = `Level ${level} Scholar`;
+            }
+        });
+    } else {
+        const el = document.getElementById('user-level');
+        if (el) el.innerHTML = '<a href="signin.html" class="text-blue-400 hover:underline">Sign In</a>';
+    }
+});
+</script>
+<script src="global.js"></script>
+</body>
+</html>
